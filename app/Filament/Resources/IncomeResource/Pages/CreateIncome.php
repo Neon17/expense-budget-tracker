@@ -4,6 +4,7 @@ namespace App\Filament\Resources\IncomeResource\Pages;
 
 use App\Filament\Resources\IncomeResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Auth;
 
 class CreateIncome extends CreateRecord
 {
@@ -11,8 +12,8 @@ class CreateIncome extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['user_id'] = auth()->id();
-        $data['currency'] = auth()->user()->currency ?? 'NPR';
+        $data['user_id'] = Auth::id();
+        $data['currency'] = Auth::user()->currency ?? 'NPR';
         return $data;
     }
 

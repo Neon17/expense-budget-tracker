@@ -13,6 +13,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class MonthlyReport extends Page implements HasForms
@@ -61,7 +62,7 @@ class MonthlyReport extends Page implements HasForms
 
     public function getReportData(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $month = $this->selectedMonth ?? now()->format('Y-m');
 
         $expenses = Expense::where('user_id', $user->id)
@@ -72,16 +73,17 @@ class MonthlyReport extends Page implements HasForms
             ->month($month)
             ->get();
 
-        $budget = Budget::where('user_id', $user->id)
+        // Get all budgets for the user (for the selected month)
+        $budgets = Budget::where('user_id', $user->id)
             ->where('month', $month)
-            ->first();
+            ->get();
 
         $totalExpenses = $expenses->sum('amount');
         $totalIncome = $incomes->sum('amount');
-        $savings = $totalIncome - $totalExpenses;
+        $netBalance = $totalIncome - $totalExpenses;
 
-        // Category breakdown
-        $categoryBreakdown = $expenses->groupBy('category_id')->map(function ($items, $categoryId) use ($totalExpenses) {
+        // Category breakdown (for expensesByCategory)
+        $expensesByCategory = $expenses->groupBy('category_id')->map(function ($items, $categoryId) use ($totalExpenses) {
             $category = Category::find($categoryId);
             $total = $items->sum('amount');
             return [
@@ -101,17 +103,52 @@ class MonthlyReport extends Page implements HasForms
         // Top expenses
         $topExpenses = $expenses->sortByDesc('amount')->take(5)->values();
 
+        // Recent expenses (for recentExpenses)
+        $recentExpenses = $expenses->sortByDesc('date')->take(5)->map(function ($expense) {
+            return [
+                'description' => $expense->description,
+                'amount' => $expense->amount,
+                'category' => $expense->category?->name ?? 'Uncategorized',
+                'date' => $expense->date->format('M d, Y'),
+            ];
+        })->values()->toArray();
+
+        // Recent incomes (for recentIncomes)
+        $recentIncomes = $incomes->sortByDesc('date')->take(5)->map(function ($income) {
+            return [
+                'source' => $income->source ?? $income->description ?? 'Income',
+                'amount' => $income->amount,
+                'date' => $income->date->format('M d, Y'),
+            ];
+        })->values()->toArray();
+
+        // Format budgets for the view
+        $budgetsFormatted = $budgets->map(function ($budget) use ($expenses) {
+            $spent = $expenses->sum('amount');
+            
+            return [
+                'category' => 'Overall Budget',
+                'amount' => $budget->amount,
+                'spent' => $spent,
+                'period' => $budget->period,
+            ];
+        })->toArray();
+
         return [
             'month' => Carbon::createFromFormat('Y-m', $month)->format('F Y'),
             'totalExpenses' => $totalExpenses,
             'totalIncome' => $totalIncome,
-            'savings' => $savings,
-            'savingsRate' => $totalIncome > 0 ? round(($savings / $totalIncome) * 100, 1) : 0,
-            'budget' => $budget,
-            'budgetUsage' => $budget ? $budget->usage_percentage : null,
-            'categoryBreakdown' => $categoryBreakdown,
+            'netBalance' => $netBalance,
+            'savings' => $netBalance,
+            'savingsRate' => $totalIncome > 0 ? round(($netBalance / $totalIncome) * 100, 1) : 0,
+            'budgets' => $budgetsFormatted,
+            'budgetUsage' => count($budgetsFormatted) > 0 ? $budgetsFormatted[0] : null,
+            'expensesByCategory' => $expensesByCategory,
+            'categoryBreakdown' => $expensesByCategory,
             'dailySpending' => $dailySpending,
             'topExpenses' => $topExpenses,
+            'recentExpenses' => $recentExpenses,
+            'recentIncomes' => $recentIncomes,
             'expenseCount' => $expenses->count(),
             'incomeCount' => $incomes->count(),
             'avgDailyExpense' => $expenses->count() > 0 ? round($totalExpenses / max(1, count($dailySpending)), 2) : 0,

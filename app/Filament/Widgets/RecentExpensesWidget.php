@@ -6,6 +6,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use App\Models\Expense;
+use Illuminate\Support\Facades\Auth;
 
 class RecentExpensesWidget extends BaseWidget
 {
@@ -20,7 +21,7 @@ class RecentExpensesWidget extends BaseWidget
         return $table
             ->query(
                 Expense::query()
-                    ->where('user_id', auth()->id())
+                    ->where('user_id', Auth::id())
                     ->with('category')
                     ->orderBy('date', 'desc')
                     ->limit(5)

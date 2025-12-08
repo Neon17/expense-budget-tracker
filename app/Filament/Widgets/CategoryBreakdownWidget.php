@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Category;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Auth;
 
 class CategoryBreakdownWidget extends ChartWidget
 {
@@ -13,7 +14,7 @@ class CategoryBreakdownWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $currentMonth = now()->format('Y-m');
 
         $categoryData = $user->expenses()

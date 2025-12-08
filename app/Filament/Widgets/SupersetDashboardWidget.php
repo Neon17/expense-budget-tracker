@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\Expense;
 use App\Models\Income;
 use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Auth;
 
 class SupersetDashboardWidget extends Widget
 {
@@ -16,7 +17,7 @@ class SupersetDashboardWidget extends Widget
 
     public function getViewData(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $currentMonth = now()->format('Y-m');
 
         // Get data for charts

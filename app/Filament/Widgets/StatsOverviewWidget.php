@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Auth;
 
 class StatsOverviewWidget extends BaseWidget
 {
@@ -11,7 +12,7 @@ class StatsOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $currentMonth = now()->format('Y-m');
         $previousMonth = now()->subMonth()->format('Y-m');
 
@@ -79,7 +80,7 @@ class StatsOverviewWidget extends BaseWidget
 
     protected function getExpenseChartData(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $data = [];
 
         for ($i = 6; $i >= 0; $i--) {
@@ -92,7 +93,7 @@ class StatsOverviewWidget extends BaseWidget
 
     protected function getIncomeChartData(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $data = [];
 
         for ($i = 6; $i >= 0; $i--) {

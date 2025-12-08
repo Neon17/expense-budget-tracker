@@ -13,15 +13,16 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class ExpenseResource extends Resource
 {
@@ -45,7 +46,7 @@ class ExpenseResource extends Resource
                         Select::make('category_id')
                             ->label('Category')
                             ->options(function () {
-                                return Category::where('user_id', auth()->id())
+                                return Category::where('user_id', Auth::id())
                                     ->expenseType()
                                     ->pluck('name', 'id');
                             })
@@ -62,7 +63,7 @@ class ExpenseResource extends Resource
                             ])
                             ->createOptionUsing(function (array $data) {
                                 $category = Category::create([
-                                    'user_id' => auth()->id(),
+                                    'user_id' => Auth::id(),
                                     'name' => $data['name'],
                                     'color' => $data['color'],
                                     'type' => 'expense',
@@ -83,9 +84,9 @@ class ExpenseResource extends Resource
                             ->rows(3)
                             ->columnSpanFull(),
                         Hidden::make('user_id')
-                            ->default(fn () => auth()->id()),
+                            ->default(fn () => Auth::id()),
                         Hidden::make('currency')
-                            ->default(fn () => auth()->user()->currency ?? 'NPR'),
+                            ->default(fn () => Auth::user()->currency ?? 'NPR'),
                     ])->columns(2),
             ]);
     }
@@ -119,7 +120,7 @@ class ExpenseResource extends Resource
                 Tables\Filters\SelectFilter::make('category_id')
                     ->label('Category')
                     ->options(function () {
-                        return Category::where('user_id', auth()->id())
+                        return Category::where('user_id', Auth::id())
                             ->expenseType()
                             ->pluck('name', 'id');
                     }),
@@ -170,6 +171,6 @@ class ExpenseResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('user_id', auth()->id());
+            ->where('user_id', Auth::id());
     }
 }

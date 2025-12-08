@@ -77,6 +77,22 @@ class Budget extends Model
     }
 
     /**
+     * Get amount attribute (alias for monthly_limit).
+     */
+    public function getAmountAttribute(): float
+    {
+        return (float) $this->monthly_limit;
+    }
+
+    /**
+     * Get period attribute.
+     */
+    public function getPeriodAttribute(): string
+    {
+        return 'monthly';
+    }
+
+    /**
      * Get or create current month's budget.
      */
     public static function currentForUser(User $user): ?self

@@ -9,7 +9,7 @@ A full-stack Laravel 12 + Filament 4 application with Superset integration for e
 - **Backend**: Laravel 12 with PHP 8.5
 - **Admin Panel**: Filament PHP v4
 - **Database**: SQLite (dev) / MySQL (production)
-- **Analytics**: Apache Superset (via REST API) + ApexCharts
+- **Analytics**: Apache Superset (via REST API) + Chart.js
 - **Frontend**: Filament Dashboard + Blade Components
 - **Auth**: Laravel Sanctum (API Tokens)
 - **Default Currency**: NPR (Nepalese Rupee)
@@ -39,7 +39,7 @@ A full-stack Laravel 12 + Filament 4 application with Superset integration for e
 - ✅ CategoryBreakdownWidget - Pie chart by category
 - ✅ BudgetProgressWidget - Budget utilization progress
 - ✅ RecentExpensesWidget - Latest transactions
-- ✅ SupersetDashboardWidget - Advanced analytics with ApexCharts
+- ✅ SupersetDashboardWidget - Advanced analytics with Chart.js
 
 ### 4. API Endpoints (Mobile App Ready)
 

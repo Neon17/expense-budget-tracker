@@ -1,14 +1,14 @@
 <x-filament-widgets::widget>
     <div x-data="supersetDashboard()" x-init="initCharts()" class="space-y-6">
         <!-- Header -->
-        <div class="flex items-center justify-between">
+        {{-- <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive financial overview powered by advanced charts</p>
             </div>
             <div class="flex items-center space-x-2">
                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
-                    <svg class="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg style="width: 0.75rem; height: 0.75rem;" class="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 12H9v-2h2v2zm0-4H9V6h2v4z"/>
                     </svg>
                     Live Data
@@ -53,9 +53,9 @@
                 </div>
                 <div id="income-expense-chart" class="h-72"></div>
             </div>
-        </div>
+        </div> --}}
 
-        <!-- Bottom Charts -->
+        {{-- <!-- Bottom Charts -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Savings Rate Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -74,10 +74,10 @@
                 </div>
                 <div id="weekly-pattern-chart" class="h-64"></div>
             </div>
-        </div>
+        </div> --}}
 
         <!-- API Endpoints Info -->
-        <div class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        {{-- <div class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">📊 Superset API Endpoints</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Use these endpoints for Apache Superset or external BI tools integration:</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -94,7 +94,7 @@
                     <p class="text-xs text-gray-500 mt-1">Monthly aggregates</p>
                 </div>
             </div>
-        </div>
+        </div> --}}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>

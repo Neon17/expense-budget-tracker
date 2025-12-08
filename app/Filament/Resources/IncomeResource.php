@@ -12,10 +12,12 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class IncomeResource extends Resource
 {
@@ -34,7 +36,7 @@ class IncomeResource extends Resource
     {
         return $schema
             ->components([
-                Components\Section::make('Income Details')
+                Section::make('Income Details')
                     ->schema([
                         Components\TextInput::make('source')
                             ->required()
@@ -43,7 +45,7 @@ class IncomeResource extends Resource
                         Components\Select::make('category_id')
                             ->label('Category')
                             ->options(function () {
-                                return Category::where('user_id', auth()->id())
+                                return Category::where('user_id', Auth::id())
                                     ->incomeType()
                                     ->pluck('name', 'id');
                             })
@@ -59,7 +61,7 @@ class IncomeResource extends Resource
                             ])
                             ->createOptionUsing(function (array $data) {
                                 $category = Category::create([
-                                    'user_id' => auth()->id(),
+                                    'user_id' => Auth::id(),
                                     'name' => $data['name'],
                                     'color' => $data['color'],
                                     'type' => 'income',
@@ -80,9 +82,9 @@ class IncomeResource extends Resource
                             ->rows(3)
                             ->columnSpanFull(),
                         Components\Hidden::make('user_id')
-                            ->default(fn () => auth()->id()),
+                            ->default(fn () => Auth::id()),
                         Components\Hidden::make('currency')
-                            ->default(fn () => auth()->user()->currency ?? 'NPR'),
+                            ->default(fn () => Auth::user()->currency ?? 'NPR'),
                     ])->columns(2),
             ]);
     }
@@ -120,7 +122,7 @@ class IncomeResource extends Resource
                 Tables\Filters\SelectFilter::make('category_id')
                     ->label('Category')
                     ->options(function () {
-                        return Category::where('user_id', auth()->id())
+                        return Category::where('user_id', Auth::id())
                             ->incomeType()
                             ->pluck('name', 'id');
                     }),
@@ -171,6 +173,6 @@ class IncomeResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('user_id', auth()->id());
+            ->where('user_id', Auth::id());
     }
 }

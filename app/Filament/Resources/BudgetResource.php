@@ -10,13 +10,14 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class BudgetResource extends Resource
 {
@@ -50,9 +51,9 @@ class BudgetResource extends Resource
                             ->regex('/^\d{4}-(0[1-9]|1[0-2])$/')
                             ->helperText('Format: YYYY-MM (e.g., 2024-01)'),
                         Hidden::make('user_id')
-                            ->default(fn () => auth()->id()),
+                            ->default(fn () => Auth::id()),
                         Hidden::make('currency')
-                            ->default(fn () => auth()->user()->currency ?? 'NPR'),
+                            ->default(fn () => Auth::user()->currency ?? 'NPR'),
                     ])->columns(2),
             ]);
     }
@@ -131,6 +132,6 @@ class BudgetResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('user_id', auth()->id());
+            ->where('user_id', Auth::id());
     }
 }

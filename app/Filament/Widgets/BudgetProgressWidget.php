@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Auth;
 
 class BudgetProgressWidget extends ChartWidget
 {
@@ -12,7 +13,7 @@ class BudgetProgressWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $year = now()->year;
         $currentMonth = now()->month;
 

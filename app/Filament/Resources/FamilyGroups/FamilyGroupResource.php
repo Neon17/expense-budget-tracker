@@ -5,17 +5,23 @@ namespace App\Filament\Resources\FamilyGroups;
 use App\Filament\Resources\FamilyGroups\Pages\CreateFamilyGroup;
 use App\Filament\Resources\FamilyGroups\Pages\EditFamilyGroup;
 use App\Filament\Resources\FamilyGroups\Pages\ListFamilyGroups;
+use App\Filament\Resources\FamilyGroups\RelationManagers\MembersRelationManager;
 use App\Models\FamilyGroup;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class FamilyGroupResource extends Resource
@@ -56,9 +62,9 @@ class FamilyGroupResource extends Resource
                             ->dehydrated(false)
                             ->helperText('Share this code with family members to join'),
                         Hidden::make('owner_id')
-                            ->default(fn () => auth()->id()),
+                            ->default(fn() => Auth::id()),
                         Hidden::make('currency')
-                            ->default(fn () => auth()->user()->currency ?? 'NPR'),
+                            ->default(fn() => Auth::user()->currency ?? 'NPR'),
                     ])->columns(2),
             ]);
     }
@@ -96,17 +102,17 @@ class FamilyGroupResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('regenerate_code')
+                EditAction::make(),
+                Action::make('regenerate_code')
                     ->label('New Code')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->requiresConfirmation()
-                    ->action(fn (FamilyGroup $record) => $record->regenerateInviteCode()),
+                    ->action(fn(FamilyGroup $record) => $record->regenerateInviteCode()),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -114,7 +120,7 @@ class FamilyGroupResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            MembersRelationManager::class,
         ];
     }
 
@@ -131,9 +137,9 @@ class FamilyGroupResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where(function ($query) {
-                $query->where('owner_id', auth()->id())
+                $query->where('owner_id', Auth::id())
                     ->orWhereHas('members', function ($q) {
-                        $q->where('user_id', auth()->id());
+                        $q->where('user_id', Auth::id());
                     });
             });
     }
