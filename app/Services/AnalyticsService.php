@@ -227,4 +227,332 @@ class AnalyticsService
 
         return 'safe';
     }
+
+    /**
+     * Get weekly expense/income stats for the specified number of weeks.
+     */
+    public function getWeeklyStats(int $userId, int $weeksBack = 8): array
+    {
+        $user = User::findOrFail($userId);
+        $weeks = [];
+
+        for ($i = $weeksBack - 1; $i >= 0; $i--) {
+            $weekStart = now()->subWeeks($i)->startOfWeek();
+            $weekEnd = now()->subWeeks($i)->endOfWeek();
+
+            $expenses = $user->expenses()
+                ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+                ->sum('amount');
+
+            $income = $user->incomes()
+                ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+                ->sum('amount');
+
+            $weeks[] = [
+                'week_number' => $weekStart->weekOfYear,
+                'week_start' => $weekStart->toDateString(),
+                'week_end' => $weekEnd->toDateString(),
+                'label' => $weekStart->format('M d') . ' - ' . $weekEnd->format('M d'),
+                'expenses' => (float) $expenses,
+                'income' => (float) $income,
+                'net' => (float) $income - (float) $expenses,
+                'transaction_count' => $user->expenses()
+                    ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+                    ->count() + $user->incomes()
+                    ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+                    ->count(),
+            ];
+        }
+
+        return [
+            'weeks' => $weeks,
+            'totals' => [
+                'total_expenses' => collect($weeks)->sum('expenses'),
+                'total_income' => collect($weeks)->sum('income'),
+                'total_net' => collect($weeks)->sum('net'),
+                'avg_weekly_expense' => collect($weeks)->avg('expenses'),
+                'avg_weekly_income' => collect($weeks)->avg('income'),
+            ],
+        ];
+    }
+
+    /**
+     * Get category-level statistics.
+     */
+    public function getCategoryStats(int $userId, string $type = 'expense', ?string $startDate = null, ?string $endDate = null): array
+    {
+        $user = User::findOrFail($userId);
+        $startDate = $startDate ?? now()->subMonths(6)->startOfMonth()->toDateString();
+        $endDate = $endDate ?? now()->endOfMonth()->toDateString();
+
+        if ($type === 'expense') {
+            $query = $user->expenses()->with('category');
+        } else {
+            $query = $user->incomes()->with('category');
+        }
+
+        $data = $query
+            ->whereBetween('date', [$startDate, $endDate])
+            ->selectRaw('category_id, SUM(amount) as total, COUNT(*) as count, AVG(amount) as avg_amount, MIN(amount) as min_amount, MAX(amount) as max_amount')
+            ->groupBy('category_id')
+            ->get();
+
+        $grandTotal = $data->sum('total');
+
+        $categories = $data->map(function ($item) use ($grandTotal, $type) {
+            $category = $item->category;
+            return [
+                'category_id' => $item->category_id,
+                'category_name' => $category->name ?? 'Uncategorized',
+                'category_icon' => $category->icon ?? 'heroicon-o-tag',
+                'category_color' => $category->color ?? '#6366F1',
+                'type' => $type,
+                'total' => (float) $item->total,
+                'count' => (int) $item->count,
+                'avg_amount' => round((float) $item->avg_amount, 2),
+                'min_amount' => (float) $item->min_amount,
+                'max_amount' => (float) $item->max_amount,
+                'percentage' => $grandTotal > 0 ? round(($item->total / $grandTotal) * 100, 2) : 0,
+            ];
+        })->sortByDesc('total')->values()->toArray();
+
+        return [
+            'type' => $type,
+            'period' => [
+                'start' => $startDate,
+                'end' => $endDate,
+            ],
+            'categories' => $categories,
+            'summary' => [
+                'total_categories' => count($categories),
+                'grand_total' => $grandTotal,
+                'top_category' => $categories[0] ?? null,
+            ],
+        ];
+    }
+
+    /**
+     * Get flat expense data for Superset integration.
+     */
+    public function getSupersetExpenseData(int $userId, int $limit = 10000): array
+    {
+        $user = User::findOrFail($userId);
+
+        return $user->expenses()
+            ->with('category')
+            ->orderBy('date', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(function ($expense) use ($user) {
+                return [
+                    'id' => $expense->id,
+                    'user_id' => $expense->user_id,
+                    'user_name' => $user->name,
+                    'category_id' => $expense->category_id,
+                    'category_name' => $expense->category->name ?? 'Uncategorized',
+                    'category_color' => $expense->category->color ?? '#6366F1',
+                    'amount' => (float) $expense->amount,
+                    'description' => $expense->description,
+                    'date' => $expense->date,
+                    'year' => date('Y', strtotime($expense->date)),
+                    'month' => date('m', strtotime($expense->date)),
+                    'month_name' => date('F', strtotime($expense->date)),
+                    'week' => date('W', strtotime($expense->date)),
+                    'day_of_week' => date('l', strtotime($expense->date)),
+                    'quarter' => ceil(date('n', strtotime($expense->date)) / 3),
+                    'currency' => $user->currency ?? 'NPR',
+                    'created_at' => $expense->created_at->toIso8601String(),
+                ];
+            })->toArray();
+    }
+
+    /**
+     * Get flat income data for Superset integration.
+     */
+    public function getSupersetIncomeData(int $userId, int $limit = 10000): array
+    {
+        $user = User::findOrFail($userId);
+
+        return $user->incomes()
+            ->with('category')
+            ->orderBy('date', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(function ($income) use ($user) {
+                return [
+                    'id' => $income->id,
+                    'user_id' => $income->user_id,
+                    'user_name' => $user->name,
+                    'category_id' => $income->category_id,
+                    'category_name' => $income->category->name ?? 'Uncategorized',
+                    'category_color' => $income->category->color ?? '#6366F1',
+                    'amount' => (float) $income->amount,
+                    'source' => $income->source,
+                    'description' => $income->description,
+                    'date' => $income->date,
+                    'year' => date('Y', strtotime($income->date)),
+                    'month' => date('m', strtotime($income->date)),
+                    'month_name' => date('F', strtotime($income->date)),
+                    'week' => date('W', strtotime($income->date)),
+                    'day_of_week' => date('l', strtotime($income->date)),
+                    'quarter' => ceil(date('n', strtotime($income->date)) / 3),
+                    'currency' => $user->currency ?? 'NPR',
+                    'is_recurring' => $income->is_recurring ?? false,
+                    'created_at' => $income->created_at->toIso8601String(),
+                ];
+            })->toArray();
+    }
+
+    /**
+     * Get monthly aggregate data for Superset charts.
+     */
+    public function getSupersetMonthlyAggregate(int $userId, int $months = 24): array
+    {
+        $user = User::findOrFail($userId);
+        $data = [];
+
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $monthDate = now()->subMonths($i);
+            $monthStr = $monthDate->format('Y-m');
+
+            $expenses = $user->expenses()->month($monthStr)->sum('amount');
+            $income = $user->incomes()->month($monthStr)->sum('amount');
+            $budget = $user->budgets()->where('month', $monthStr)->first();
+
+            // Get category breakdown for this month
+            $categoryBreakdown = $user->expenses()
+                ->with('category')
+                ->month($monthStr)
+                ->selectRaw('category_id, SUM(amount) as total')
+                ->groupBy('category_id')
+                ->get()
+                ->mapWithKeys(function ($item) {
+                    $categoryName = $item->category->name ?? 'Uncategorized';
+                    return [$categoryName => (float) $item->total];
+                })->toArray();
+
+            $data[] = [
+                'month' => $monthStr,
+                'month_name' => $monthDate->format('F'),
+                'year' => $monthDate->year,
+                'quarter' => ceil($monthDate->month / 3),
+                'total_expenses' => (float) $expenses,
+                'total_income' => (float) $income,
+                'net_savings' => (float) $income - (float) $expenses,
+                'savings_rate' => $income > 0 ? round((($income - $expenses) / $income) * 100, 2) : 0,
+                'budget_amount' => $budget ? (float) $budget->monthly_limit : null,
+                'budget_utilization' => $budget && $budget->monthly_limit > 0 
+                    ? round(($expenses / $budget->monthly_limit) * 100, 2) 
+                    : null,
+                'expense_count' => $user->expenses()->month($monthStr)->count(),
+                'income_count' => $user->incomes()->month($monthStr)->count(),
+                'category_breakdown' => $categoryBreakdown,
+                'currency' => $user->currency ?? 'NPR',
+            ];
+        }
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'user_id' => $userId,
+                'months_included' => $months,
+                'generated_at' => now()->toIso8601String(),
+                'currency' => $user->currency ?? 'NPR',
+            ],
+        ];
+    }
+
+    /**
+     * Get savings rate analysis.
+     */
+    public function getSavingsRate(int $userId, int $months = 12): array
+    {
+        $user = User::findOrFail($userId);
+        $monthlyData = [];
+        $totalIncome = 0;
+        $totalExpenses = 0;
+
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $monthDate = now()->subMonths($i);
+            $monthStr = $monthDate->format('Y-m');
+
+            $income = $user->incomes()->month($monthStr)->sum('amount');
+            $expenses = $user->expenses()->month($monthStr)->sum('amount');
+
+            $totalIncome += $income;
+            $totalExpenses += $expenses;
+
+            $savingsRate = $income > 0 ? round((($income - $expenses) / $income) * 100, 2) : 0;
+
+            $monthlyData[] = [
+                'month' => $monthStr,
+                'month_name' => $monthDate->format('F Y'),
+                'income' => (float) $income,
+                'expenses' => (float) $expenses,
+                'savings' => (float) $income - (float) $expenses,
+                'savings_rate' => $savingsRate,
+                'status' => $this->getSavingsStatus($savingsRate),
+            ];
+        }
+
+        $overallSavingsRate = $totalIncome > 0 
+            ? round((($totalIncome - $totalExpenses) / $totalIncome) * 100, 2) 
+            : 0;
+
+        return [
+            'monthly_data' => $monthlyData,
+            'summary' => [
+                'period_months' => $months,
+                'total_income' => (float) $totalIncome,
+                'total_expenses' => (float) $totalExpenses,
+                'total_savings' => (float) $totalIncome - (float) $totalExpenses,
+                'overall_savings_rate' => $overallSavingsRate,
+                'avg_monthly_income' => round($totalIncome / $months, 2),
+                'avg_monthly_expenses' => round($totalExpenses / $months, 2),
+                'avg_monthly_savings' => round(($totalIncome - $totalExpenses) / $months, 2),
+                'best_month' => collect($monthlyData)->sortByDesc('savings_rate')->first(),
+                'worst_month' => collect($monthlyData)->sortBy('savings_rate')->first(),
+                'status' => $this->getSavingsStatus($overallSavingsRate),
+                'recommendation' => $this->getSavingsRecommendation($overallSavingsRate),
+            ],
+            'benchmarks' => [
+                'excellent' => 30,
+                'good' => 20,
+                'average' => 10,
+                'poor' => 0,
+            ],
+        ];
+    }
+
+    /**
+     * Get savings status based on rate.
+     */
+    protected function getSavingsStatus(float $rate): string
+    {
+        if ($rate >= 30) return 'excellent';
+        if ($rate >= 20) return 'good';
+        if ($rate >= 10) return 'average';
+        if ($rate >= 0) return 'low';
+        return 'negative';
+    }
+
+    /**
+     * Get savings recommendation based on rate.
+     */
+    protected function getSavingsRecommendation(float $rate): string
+    {
+        if ($rate >= 30) {
+            return 'Excellent savings rate! You\'re on track for financial independence. Consider investing the surplus.';
+        }
+        if ($rate >= 20) {
+            return 'Good savings rate! You\'re building wealth steadily. Try to optimize your expenses to reach 30%.';
+        }
+        if ($rate >= 10) {
+            return 'Average savings rate. Review your expenses and try to identify areas where you can cut back.';
+        }
+        if ($rate >= 0) {
+            return 'Low savings rate. Consider creating a budget and reducing non-essential expenses.';
+        }
+        return 'Spending exceeds income! Urgent action needed. Review all expenses and find ways to increase income.';
+    }
 }

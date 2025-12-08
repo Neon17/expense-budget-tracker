@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\IncomeController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\FamilyGroupController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -52,5 +53,33 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/category-breakdown', [AnalyticsController::class, 'categoryBreakdown']);
         Route::get('/budget-vs-actual', [AnalyticsController::class, 'budgetVsActual']);
         Route::get('/income-vs-expense', [AnalyticsController::class, 'incomeVsExpense']);
+        
+        // New analytics endpoints
+        Route::get('/weekly-stats', [AnalyticsController::class, 'weeklyStats']);
+        Route::get('/category-stats', [AnalyticsController::class, 'categoryStats']);
+        Route::get('/savings-rate', [AnalyticsController::class, 'savingsRate']);
+        
+        // Superset integration APIs
+        Route::prefix('superset')->group(function () {
+            Route::get('/expenses', [AnalyticsController::class, 'supersetExpenseData']);
+            Route::get('/incomes', [AnalyticsController::class, 'supersetIncomeData']);
+            Route::get('/monthly-aggregate', [AnalyticsController::class, 'supersetMonthlyAggregate']);
+        });
+    });
+
+    // Family Groups
+    Route::prefix('family-groups')->group(function () {
+        Route::get('/', [FamilyGroupController::class, 'index']);
+        Route::post('/', [FamilyGroupController::class, 'store']);
+        Route::post('/join', [FamilyGroupController::class, 'join']);
+        Route::get('/{familyGroup}', [FamilyGroupController::class, 'show']);
+        Route::put('/{familyGroup}', [FamilyGroupController::class, 'update']);
+        Route::delete('/{familyGroup}', [FamilyGroupController::class, 'destroy']);
+        Route::post('/{familyGroup}/leave', [FamilyGroupController::class, 'leave']);
+        Route::post('/{familyGroup}/regenerate-code', [FamilyGroupController::class, 'regenerateInviteCode']);
+        Route::post('/{familyGroup}/transfer-ownership', [FamilyGroupController::class, 'transferOwnership']);
+        Route::get('/{familyGroup}/statistics', [FamilyGroupController::class, 'statistics']);
+        Route::delete('/{familyGroup}/members/{member}', [FamilyGroupController::class, 'removeMember']);
+        Route::put('/{familyGroup}/members/{member}/role', [FamilyGroupController::class, 'updateMemberRole']);
     });
 });

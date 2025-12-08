@@ -118,4 +118,39 @@ class User extends Authenticatable implements FilamentUser
             ->month(now()->format('Y-m'))
             ->sum('amount');
     }
+
+    /**
+     * Get family groups owned by the user.
+     */
+    public function ownedFamilyGroups(): HasMany
+    {
+        return $this->hasMany(FamilyGroup::class, 'owner_id');
+    }
+
+    /**
+     * Get all family groups the user belongs to.
+     */
+    public function familyGroups(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(FamilyGroup::class, 'family_group_members')
+            ->withPivot(['role', 'can_add_expenses', 'can_view_all', 'joined_at'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Check if user is owner of a family group.
+     */
+    public function isOwnerOf(FamilyGroup $familyGroup): bool
+    {
+        return $this->id === $familyGroup->owner_id;
+    }
+
+    /**
+     * Check if user is admin of a family group.
+     */
+    public function isAdminOf(FamilyGroup $familyGroup): bool
+    {
+        $membership = $this->familyGroups()->where('family_group_id', $familyGroup->id)->first();
+        return $membership && in_array($membership->pivot->role, ['owner', 'admin']);
+    }
 }
