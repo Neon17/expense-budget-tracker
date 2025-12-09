@@ -11,22 +11,32 @@ class BudgetController extends Controller
 {
     /**
      * Display a listing of budgets.
+     * Budgets are owned by the data owner (parent for family).
      */
     public function index(Request $request): JsonResponse
     {
-        $budgets = $request->user()->budgets()
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
+        $budgets = $dataOwner->budgets()
             ->orderBy('month', 'desc')
             ->get()
-            ->map(function ($budget) {
+            ->map(function ($budget) use ($user) {
+                // Calculate spent from all family members
+                $userIds = $user->getSharedDashboardUserIds();
+                $spent = \App\Models\Expense::whereIn('user_id', $userIds)
+                    ->month($budget->month)
+                    ->sum('amount');
+                    
                 return [
                     'id' => $budget->id,
                     'monthly_limit' => (float) $budget->monthly_limit,
                     'month' => $budget->month,
                     'currency' => $budget->currency,
-                    'spent' => (float) $budget->spent,
-                    'remaining' => (float) $budget->remaining,
-                    'usage_percentage' => $budget->usage_percentage,
-                    'status' => $budget->status,
+                    'spent' => (float) $spent,
+                    'remaining' => (float) max(0, $budget->monthly_limit - $spent),
+                    'usage_percentage' => $budget->monthly_limit > 0 ? round(($spent / $budget->monthly_limit) * 100, 2) : 0,
+                    'status' => $this->getBudgetStatus($spent, $budget->monthly_limit),
                 ];
             });
 
@@ -40,8 +50,12 @@ class BudgetController extends Controller
      */
     public function current(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        $userIds = $user->getSharedDashboardUserIds();
+        
         $currentMonth = now()->format('Y-m');
-        $budget = $request->user()->budgets()
+        $budget = $dataOwner->budgets()
             ->where('month', $currentMonth)
             ->first();
 
@@ -52,25 +66,35 @@ class BudgetController extends Controller
             ]);
         }
 
+        // Calculate spent from all family members
+        $spent = \App\Models\Expense::whereIn('user_id', $userIds)
+            ->month($currentMonth)
+            ->sum('amount');
+
         return response()->json([
             'data' => [
                 'id' => $budget->id,
                 'monthly_limit' => (float) $budget->monthly_limit,
                 'month' => $budget->month,
                 'currency' => $budget->currency,
-                'spent_this_month' => (float) $budget->spent,
-                'remaining' => (float) $budget->remaining,
-                'usage_percentage' => $budget->usage_percentage,
-                'status' => $budget->status,
+                'spent_this_month' => (float) $spent,
+                'remaining' => (float) max(0, $budget->monthly_limit - $spent),
+                'usage_percentage' => $budget->monthly_limit > 0 ? round(($spent / $budget->monthly_limit) * 100, 2) : 0,
+                'status' => $this->getBudgetStatus($spent, $budget->monthly_limit),
             ],
         ]);
     }
 
     /**
      * Store or update a budget for a specific month.
+     * Only the data owner can create/modify budgets.
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        $userIds = $user->getSharedDashboardUserIds();
+        
         $validated = $request->validate([
             'monthly_limit' => ['required', 'numeric', 'min:1'],
             'month' => ['nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
@@ -79,13 +103,18 @@ class BudgetController extends Controller
 
         $month = $validated['month'] ?? now()->format('Y-m');
 
-        $budget = $request->user()->budgets()->updateOrCreate(
+        $budget = $dataOwner->budgets()->updateOrCreate(
             ['month' => $month],
             [
                 'monthly_limit' => $validated['monthly_limit'],
-                'currency' => $validated['currency'] ?? $request->user()->currency ?? 'NPR',
+                'currency' => $validated['currency'] ?? $dataOwner->currency ?? 'NPR',
             ]
         );
+
+        // Calculate spent from all family members
+        $spent = \App\Models\Expense::whereIn('user_id', $userIds)
+            ->month($month)
+            ->sum('amount');
 
         return response()->json([
             'message' => 'Budget saved successfully',
@@ -94,10 +123,10 @@ class BudgetController extends Controller
                 'monthly_limit' => (float) $budget->monthly_limit,
                 'month' => $budget->month,
                 'currency' => $budget->currency,
-                'spent_this_month' => (float) $budget->spent,
-                'remaining' => (float) $budget->remaining,
-                'usage_percentage' => $budget->usage_percentage,
-                'status' => $budget->status,
+                'spent_this_month' => (float) $spent,
+                'remaining' => (float) max(0, $budget->monthly_limit - $spent),
+                'usage_percentage' => $budget->monthly_limit > 0 ? round(($spent / $budget->monthly_limit) * 100, 2) : 0,
+                'status' => $this->getBudgetStatus($spent, $budget->monthly_limit),
             ],
         ], 201);
     }
@@ -107,6 +136,10 @@ class BudgetController extends Controller
      */
     public function update(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        $userIds = $user->getSharedDashboardUserIds();
+        
         $validated = $request->validate([
             'monthly_limit' => ['required', 'numeric', 'min:1'],
             'currency' => ['nullable', 'string', 'max:10'],
@@ -114,13 +147,18 @@ class BudgetController extends Controller
 
         $currentMonth = now()->format('Y-m');
 
-        $budget = $request->user()->budgets()->updateOrCreate(
+        $budget = $dataOwner->budgets()->updateOrCreate(
             ['month' => $currentMonth],
             [
                 'monthly_limit' => $validated['monthly_limit'],
-                'currency' => $validated['currency'] ?? $request->user()->currency ?? 'NPR',
+                'currency' => $validated['currency'] ?? $dataOwner->currency ?? 'NPR',
             ]
         );
+
+        // Calculate spent from all family members
+        $spent = \App\Models\Expense::whereIn('user_id', $userIds)
+            ->month($currentMonth)
+            ->sum('amount');
 
         return response()->json([
             'message' => 'Budget updated successfully',
@@ -129,10 +167,10 @@ class BudgetController extends Controller
                 'monthly_limit' => (float) $budget->monthly_limit,
                 'month' => $budget->month,
                 'currency' => $budget->currency,
-                'spent_this_month' => (float) $budget->spent,
-                'remaining' => (float) $budget->remaining,
-                'usage_percentage' => $budget->usage_percentage,
-                'status' => $budget->status,
+                'spent_this_month' => (float) $spent,
+                'remaining' => (float) max(0, $budget->monthly_limit - $spent),
+                'usage_percentage' => $budget->monthly_limit > 0 ? round(($spent / $budget->monthly_limit) * 100, 2) : 0,
+                'status' => $this->getBudgetStatus($spent, $budget->monthly_limit),
             ],
         ]);
     }
@@ -142,7 +180,11 @@ class BudgetController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $budget = $request->user()->budgets()->find($id);
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        $userIds = $user->getSharedDashboardUserIds();
+        
+        $budget = $dataOwner->budgets()->find($id);
 
         if (!$budget) {
             return response()->json([
@@ -150,16 +192,21 @@ class BudgetController extends Controller
             ], 404);
         }
 
+        // Calculate spent from all family members
+        $spent = \App\Models\Expense::whereIn('user_id', $userIds)
+            ->month($budget->month)
+            ->sum('amount');
+
         return response()->json([
             'data' => [
                 'id' => $budget->id,
                 'monthly_limit' => (float) $budget->monthly_limit,
                 'month' => $budget->month,
                 'currency' => $budget->currency,
-                'spent_this_month' => (float) $budget->spent,
-                'remaining' => (float) $budget->remaining,
-                'usage_percentage' => $budget->usage_percentage,
-                'status' => $budget->status,
+                'spent_this_month' => (float) $spent,
+                'remaining' => (float) max(0, $budget->monthly_limit - $spent),
+                'usage_percentage' => $budget->monthly_limit > 0 ? round(($spent / $budget->monthly_limit) * 100, 2) : 0,
+                'status' => $this->getBudgetStatus($spent, $budget->monthly_limit),
             ],
         ]);
     }
@@ -169,7 +216,10 @@ class BudgetController extends Controller
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $budget = $request->user()->budgets()->find($id);
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
+        $budget = $dataOwner->budgets()->find($id);
 
         if (!$budget) {
             return response()->json([
@@ -182,5 +232,27 @@ class BudgetController extends Controller
         return response()->json([
             'message' => 'Budget deleted successfully',
         ]);
+    }
+
+    /**
+     * Get budget status based on spending.
+     */
+    private function getBudgetStatus(float $spent, float $limit): string
+    {
+        if ($limit <= 0) {
+            return 'on_track';
+        }
+        
+        $percentage = ($spent / $limit) * 100;
+        
+        if ($percentage >= 100) {
+            return 'exceeded';
+        } elseif ($percentage >= 90) {
+            return 'critical';
+        } elseif ($percentage >= 70) {
+            return 'warning';
+        }
+        
+        return 'on_track';
     }
 }

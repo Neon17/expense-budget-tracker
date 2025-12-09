@@ -45,7 +45,8 @@ class IncomeResource extends Resource
                         Components\Select::make('category_id')
                             ->label('Category')
                             ->options(function () {
-                                return Category::where('user_id', Auth::id())
+                                $dataOwner = Auth::user()->getDataOwner();
+                                return Category::where('user_id', $dataOwner->id)
                                     ->incomeType()
                                     ->pluck('name', 'id');
                             })
@@ -60,8 +61,9 @@ class IncomeResource extends Resource
                                     ->default('#10B981'),
                             ])
                             ->createOptionUsing(function (array $data) {
+                                $dataOwner = Auth::user()->getDataOwner();
                                 $category = Category::create([
-                                    'user_id' => Auth::id(),
+                                    'user_id' => $dataOwner->id,
                                     'name' => $data['name'],
                                     'color' => $data['color'],
                                     'type' => 'income',
@@ -122,7 +124,8 @@ class IncomeResource extends Resource
                 Tables\Filters\SelectFilter::make('category_id')
                     ->label('Category')
                     ->options(function () {
-                        return Category::where('user_id', Auth::id())
+                        $dataOwner = Auth::user()->getDataOwner();
+                        return Category::where('user_id', $dataOwner->id)
                             ->incomeType()
                             ->pluck('name', 'id');
                     }),
@@ -170,9 +173,16 @@ class IncomeResource extends Resource
         ];
     }
 
+    /**
+     * Get incomes for the shared family dashboard.
+     * Parent and child users share the same incomes view.
+     */
     public static function getEloquentQuery(): Builder
     {
+        $user = Auth::user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
         return parent::getEloquentQuery()
-            ->where('user_id', Auth::id());
+            ->whereIn('user_id', $userIds);
     }
 }

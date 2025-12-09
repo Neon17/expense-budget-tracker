@@ -46,7 +46,8 @@ class ExpenseResource extends Resource
                         Select::make('category_id')
                             ->label('Category')
                             ->options(function () {
-                                return Category::where('user_id', Auth::id())
+                                $dataOwner = Auth::user()->getDataOwner();
+                                return Category::where('user_id', $dataOwner->id)
                                     ->expenseType()
                                     ->pluck('name', 'id');
                             })
@@ -62,8 +63,9 @@ class ExpenseResource extends Resource
                                     ->default('#6366F1'),
                             ])
                             ->createOptionUsing(function (array $data) {
+                                $dataOwner = Auth::user()->getDataOwner();
                                 $category = Category::create([
-                                    'user_id' => Auth::id(),
+                                    'user_id' => $dataOwner->id,
                                     'name' => $data['name'],
                                     'color' => $data['color'],
                                     'type' => 'expense',
@@ -120,7 +122,8 @@ class ExpenseResource extends Resource
                 Tables\Filters\SelectFilter::make('category_id')
                     ->label('Category')
                     ->options(function () {
-                        return Category::where('user_id', Auth::id())
+                        $dataOwner = Auth::user()->getDataOwner();
+                        return Category::where('user_id', $dataOwner->id)
                             ->expenseType()
                             ->pluck('name', 'id');
                     }),
@@ -168,9 +171,16 @@ class ExpenseResource extends Resource
         ];
     }
 
+    /**
+     * Get expenses for the shared family dashboard.
+     * Parent and child users share the same expenses view.
+     */
     public static function getEloquentQuery(): Builder
     {
+        $user = Auth::user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
         return parent::getEloquentQuery()
-            ->where('user_id', Auth::id());
+            ->whereIn('user_id', $userIds);
     }
 }

@@ -236,4 +236,115 @@ class User extends Authenticatable implements FilamentUser
         $membership = $this->familyGroups()->where('family_group_id', $familyGroup->id)->first();
         return $membership && in_array($membership->pivot->role, ['owner', 'admin']);
     }
+
+    /**
+     * Check if user can create a family group.
+     */
+    public function canCreateFamilyGroup(): bool
+    {
+        return FamilyGroup::canUserCreate($this);
+    }
+
+    /**
+     * Check if user can join a family group.
+     */
+    public function canJoinFamilyGroup(): bool
+    {
+        return FamilyGroup::canUserJoin($this);
+    }
+
+    /**
+     * Check if user can access a specific family group.
+     */
+    public function canAccessFamilyGroup(int $familyGroupId): bool
+    {
+        return $this->familyGroups()->where('family_group_id', $familyGroupId)->exists()
+            || $this->ownedFamilyGroups()->where('id', $familyGroupId)->exists();
+    }
+
+    /**
+     * Get the family group the user belongs to (if any).
+     * Returns the first/only family group since users can only belong to one.
+     */
+    public function getFamilyGroup(): ?FamilyGroup
+    {
+        return $this->familyGroups()->first();
+    }
+
+    /**
+     * Check if user belongs to any family group.
+     */
+    public function belongsToFamilyGroup(): bool
+    {
+        return $this->familyGroups()->exists();
+    }
+
+    /**
+     * Get the effective user for data access.
+     * For child users, this returns the parent user (for shared dashboard).
+     * For parent users, this returns themselves.
+     */
+    public function getDataOwner(): User
+    {
+        if ($this->isChild() && $this->parent) {
+            return $this->parent;
+        }
+        return $this;
+    }
+
+    /**
+     * Get all user IDs that share the same dashboard.
+     * This includes the parent and all children.
+     */
+    public function getSharedDashboardUserIds(): array
+    {
+        if ($this->isChild() && $this->parent) {
+            // If child, get parent and all siblings including self
+            return $this->parent->getFamilyMembers()->pluck('id')->toArray();
+        }
+        
+        if ($this->isParent()) {
+            // If parent, get self and all children
+            return $this->getFamilyMembers()->pluck('id')->toArray();
+        }
+
+        // Regular user without family
+        return [$this->id];
+    }
+
+    /**
+     * Scope to get expenses for the shared family dashboard.
+     */
+    public function getSharedExpenses()
+    {
+        $userIds = $this->getSharedDashboardUserIds();
+        return Expense::whereIn('user_id', $userIds);
+    }
+
+    /**
+     * Scope to get incomes for the shared family dashboard.
+     */
+    public function getSharedIncomes()
+    {
+        $userIds = $this->getSharedDashboardUserIds();
+        return Income::whereIn('user_id', $userIds);
+    }
+
+    /**
+     * Scope to get budgets for the shared family dashboard.
+     */
+    public function getSharedBudgets()
+    {
+        $dataOwner = $this->getDataOwner();
+        return Budget::where('user_id', $dataOwner->id);
+    }
+
+    /**
+     * Scope to get categories for the shared family dashboard.
+     */
+    public function getSharedCategories()
+    {
+        $dataOwner = $this->getDataOwner();
+        return Category::where('user_id', $dataOwner->id);
+    }
 }

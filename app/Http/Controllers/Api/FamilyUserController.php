@@ -44,6 +44,11 @@ class FamilyUserController extends Controller
     {
         $user = $request->user();
 
+        // Child users cannot create other children
+        if ($user->isChild()) {
+            return $this->forbiddenResponse('Child users cannot create other child accounts');
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],

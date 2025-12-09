@@ -36,6 +36,38 @@ class FamilyGroupResource extends Resource
 
     protected static ?int $navigationSort = 20;
 
+    /**
+     * Only show this resource to users who can create or manage family groups.
+     * Child users should not see this navigation item.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        // Child users cannot see family groups navigation
+        if ($user->isChild()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if user can create a new family group.
+     */
+    public static function canCreate(): bool
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        return $user->canCreateFamilyGroup();
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema

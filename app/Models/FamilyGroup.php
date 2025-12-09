@@ -19,10 +19,12 @@ class FamilyGroup extends Model
         'owner_id',
         'shared_budget',
         'currency',
+        'is_active',
     ];
 
     protected $casts = [
         'shared_budget' => 'decimal:2',
+        'is_active' => 'boolean',
     ];
 
     protected static function boot()
@@ -31,9 +33,26 @@ class FamilyGroup extends Model
         
         static::creating(function ($model) {
             if (empty($model->invite_code)) {
-                $model->invite_code = Str::upper(Str::random(8));
+                $model->invite_code = self::generateInviteCode();
             }
         });
+
+        // When a family group is created, automatically add owner as member
+        static::created(function ($model) {
+            $model->addMember($model->owner_id, 'owner');
+        });
+    }
+
+    /**
+     * Generate a unique invite code.
+     */
+    public static function generateInviteCode(): string
+    {
+        do {
+            $code = Str::upper(Str::random(8));
+        } while (self::where('invite_code', $code)->exists());
+        
+        return $code;
     }
 
     /**
@@ -92,6 +111,121 @@ class FamilyGroup extends Model
      */
     public function regenerateInviteCode(): void
     {
-        $this->update(['invite_code' => Str::upper(Str::random(8))]);
+        $this->update(['invite_code' => self::generateInviteCode()]);
+    }
+
+    /**
+     * Check if a user is a member of this family group.
+     */
+    public function hasMember(int $userId): bool
+    {
+        return $this->members()->where('user_id', $userId)->exists();
+    }
+
+    /**
+     * Add a member to the family group.
+     */
+    public function addMember(int $userId, string $role = 'member', array $permissions = []): void
+    {
+        if ($this->hasMember($userId)) {
+            return;
+        }
+
+        $this->members()->attach($userId, [
+            'role' => $role,
+            'can_add_expenses' => $permissions['can_add_expenses'] ?? true,
+            'can_view_all' => $permissions['can_view_all'] ?? true,
+            'joined_at' => now(),
+        ]);
+    }
+
+    /**
+     * Remove a member from the family group.
+     */
+    public function removeMember(int $userId): void
+    {
+        $this->members()->detach($userId);
+    }
+
+    /**
+     * Check if user can create a family group.
+     * - Child users cannot create family groups
+     * - Users who already own a family group cannot create another one
+     * - Users who are already members of a family group cannot create one
+     */
+    public static function canUserCreate(User $user): bool
+    {
+        // Child users cannot create family groups
+        if ($user->isChild()) {
+            return false;
+        }
+
+        // Check if user already owns a family group
+        if (self::where('owner_id', $user->id)->exists()) {
+            return false;
+        }
+
+        // Check if user is already a member of any family group
+        if ($user->familyGroups()->exists()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if a user can join this family group.
+     * - Child users cannot join family groups (they are part of parent-child family)
+     * - Users who already belong to a family group cannot join another one
+     */
+    public static function canUserJoin(User $user): bool
+    {
+        // Child users cannot join family groups
+        if ($user->isChild()) {
+            return false;
+        }
+
+        // Check if user is already a member of any family group
+        if ($user->familyGroups()->exists()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get validation error message for why user cannot create family.
+     */
+    public static function getCannotCreateReason(User $user): ?string
+    {
+        if ($user->isChild()) {
+            return 'Child users cannot create family groups. Only parent users can create families.';
+        }
+
+        if (self::where('owner_id', $user->id)->exists()) {
+            return 'You already own a family group. Each user can only own one family group.';
+        }
+
+        if ($user->familyGroups()->exists()) {
+            return 'You are already a member of a family group. You must leave your current family group before creating a new one.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Get validation error message for why user cannot join a family.
+     */
+    public static function getCannotJoinReason(User $user): ?string
+    {
+        if ($user->isChild()) {
+            return 'Child users cannot join family groups. You are already part of your parent\'s family.';
+        }
+
+        if ($user->familyGroups()->exists()) {
+            return 'You are already a member of a family group. You must leave your current family group before joining another one.';
+        }
+
+        return null;
     }
 }

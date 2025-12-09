@@ -58,7 +58,7 @@ class CategoryResource extends Resource
                             ->default('expense')
                             ->required(),
                         Hidden::make('user_id')
-                            ->default(fn () => Auth::id()),
+                            ->default(fn () => Auth::user()->getDataOwner()->id),
                     ])->columns(2),
             ]);
     }
@@ -126,9 +126,16 @@ class CategoryResource extends Resource
         ];
     }
 
+    /**
+     * Get categories for the shared family dashboard.
+     * Categories are owned by the data owner (parent for family).
+     */
     public static function getEloquentQuery(): Builder
     {
+        $user = Auth::user();
+        $dataOwner = $user->getDataOwner();
+        
         return parent::getEloquentQuery()
-            ->where('user_id', Auth::id());
+            ->where('user_id', $dataOwner->id);
     }
 }

@@ -61,6 +61,15 @@ class FamilyGroupController extends Controller
 
         $user = $request->user();
 
+        // Check if user can create a family group
+        if (!$user->canCreateFamilyGroup()) {
+            $reason = FamilyGroup::getCannotCreateReason($user);
+            return response()->json([
+                'success' => false,
+                'message' => $reason ?? 'You cannot create a family group',
+            ], 403);
+        }
+
         $familyGroup = FamilyGroup::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
@@ -196,6 +205,15 @@ class FamilyGroupController extends Controller
         ]);
 
         $user = $request->user();
+
+        // Check if user can join a family group
+        if (!$user->canJoinFamilyGroup()) {
+            $reason = FamilyGroup::getCannotJoinReason($user);
+            return response()->json([
+                'success' => false,
+                'message' => $reason ?? 'You cannot join a family group',
+            ], 403);
+        }
 
         $familyGroup = FamilyGroup::where('invite_code', strtoupper($validated['invite_code']))
             ->where('is_active', true)

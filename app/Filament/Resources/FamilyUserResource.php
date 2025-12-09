@@ -205,10 +205,38 @@ class FamilyUserResource extends Resource
 
     /**
      * Only show this resource to parent users or users with family_name.
+     * Child users should not see this (they can't create children).
      */
     public static function shouldRegisterNavigation(): bool
     {
         $user = Auth::user();
-        return $user && ($user->role === 'parent' || $user->family_name !== null);
+        if (!$user) {
+            return false;
+        }
+
+        // Child users cannot create other children
+        if ($user->role === 'child') {
+            return false;
+        }
+
+        return $user->role === 'parent' || $user->family_name !== null;
+    }
+
+    /**
+     * Only parent users can create child accounts.
+     */
+    public static function canCreate(): bool
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        // Child users cannot create other children
+        if ($user->role === 'child') {
+            return false;
+        }
+
+        return true;
     }
 }

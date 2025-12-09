@@ -11,10 +11,14 @@ class ExpenseController extends Controller
 {
     /**
      * Display a listing of expenses.
+     * Shows expenses from all family members (parent + children share dashboard).
      */
     public function index(Request $request): JsonResponse
     {
-        $query = $request->user()->expenses()->with('category');
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
+        $query = Expense::whereIn('user_id', $userIds)->with('category');
 
         // Filter by month (format: YYYY-MM)
         if ($request->has('month')) {
@@ -55,6 +59,9 @@ class ExpenseController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'category_id' => ['required', 'exists:categories,id'],
@@ -63,20 +70,20 @@ class ExpenseController extends Controller
             'currency' => ['nullable', 'string', 'max:10'],
         ]);
 
-        // Verify the category belongs to the user
-        $category = $request->user()->categories()->find($validated['category_id']);
+        // Verify the category belongs to the data owner (parent)
+        $category = $dataOwner->categories()->find($validated['category_id']);
         if (!$category) {
             return response()->json([
-                'message' => 'Category not found or does not belong to you.',
+                'message' => 'Category not found or does not belong to your family.',
             ], 404);
         }
 
-        $expense = $request->user()->expenses()->create([
+        $expense = $user->expenses()->create([
             'amount' => $validated['amount'],
             'category_id' => $validated['category_id'],
             'date' => $validated['date'],
             'note' => $validated['note'] ?? null,
-            'currency' => $validated['currency'] ?? $request->user()->currency ?? 'NPR',
+            'currency' => $validated['currency'] ?? $user->currency ?? 'NPR',
         ]);
 
         $expense->load('category');
@@ -92,7 +99,10 @@ class ExpenseController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $expense = $request->user()->expenses()->with('category')->find($id);
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
+        $expense = Expense::whereIn('user_id', $userIds)->with('category')->find($id);
 
         if (!$expense) {
             return response()->json([
@@ -110,7 +120,11 @@ class ExpenseController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $expense = $request->user()->expenses()->find($id);
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        $dataOwner = $user->getDataOwner();
+        
+        $expense = Expense::whereIn('user_id', $userIds)->find($id);
 
         if (!$expense) {
             return response()->json([
@@ -125,12 +139,12 @@ class ExpenseController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        // Verify the category belongs to the user if provided
+        // Verify the category belongs to the data owner if provided
         if (isset($validated['category_id'])) {
-            $category = $request->user()->categories()->find($validated['category_id']);
+            $category = $dataOwner->categories()->find($validated['category_id']);
             if (!$category) {
                 return response()->json([
-                    'message' => 'Category not found or does not belong to you.',
+                    'message' => 'Category not found or does not belong to your family.',
                 ], 404);
             }
         }
@@ -149,7 +163,10 @@ class ExpenseController extends Controller
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $expense = $request->user()->expenses()->find($id);
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
+        $expense = Expense::whereIn('user_id', $userIds)->find($id);
 
         if (!$expense) {
             return response()->json([
@@ -166,16 +183,20 @@ class ExpenseController extends Controller
 
     /**
      * Get expense summary for current month.
+     * Shows summary for all family members (shared dashboard).
      */
     public function summary(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
         $month = $request->month ?? now()->format('Y-m');
 
-        $total = $request->user()->expenses()
+        $total = Expense::whereIn('user_id', $userIds)
             ->month($month)
             ->sum('amount');
 
-        $byCategory = $request->user()->expenses()
+        $byCategory = Expense::whereIn('user_id', $userIds)
             ->with('category')
             ->month($month)
             ->selectRaw('category_id, SUM(amount) as total')

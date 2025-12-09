@@ -11,10 +11,14 @@ class IncomeController extends Controller
 {
     /**
      * Display a listing of incomes.
+     * Shows incomes from all family members (parent + children share dashboard).
      */
     public function index(Request $request): JsonResponse
     {
-        $query = $request->user()->incomes()->with('category');
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
+        $query = Income::whereIn('user_id', $userIds)->with('category');
 
         // Filter by month (format: YYYY-MM)
         if ($request->has('month')) {
@@ -58,6 +62,9 @@ class IncomeController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'source' => ['required', 'string', 'max:255'],
@@ -67,23 +74,23 @@ class IncomeController extends Controller
             'currency' => ['nullable', 'string', 'max:10'],
         ]);
 
-        // Verify the category belongs to the user if provided
+        // Verify the category belongs to the data owner if provided
         if (isset($validated['category_id'])) {
-            $category = $request->user()->categories()->find($validated['category_id']);
+            $category = $dataOwner->categories()->find($validated['category_id']);
             if (!$category) {
                 return response()->json([
-                    'message' => 'Category not found or does not belong to you.',
+                    'message' => 'Category not found or does not belong to your family.',
                 ], 404);
             }
         }
 
-        $income = $request->user()->incomes()->create([
+        $income = $user->incomes()->create([
             'amount' => $validated['amount'],
             'source' => $validated['source'],
             'category_id' => $validated['category_id'] ?? null,
             'date' => $validated['date'],
             'note' => $validated['note'] ?? null,
-            'currency' => $validated['currency'] ?? $request->user()->currency ?? 'NPR',
+            'currency' => $validated['currency'] ?? $user->currency ?? 'NPR',
         ]);
 
         $income->load('category');
@@ -99,7 +106,10 @@ class IncomeController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $income = $request->user()->incomes()->with('category')->find($id);
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
+        $income = Income::whereIn('user_id', $userIds)->with('category')->find($id);
 
         if (!$income) {
             return response()->json([
@@ -117,7 +127,11 @@ class IncomeController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $income = $request->user()->incomes()->find($id);
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        $dataOwner = $user->getDataOwner();
+        
+        $income = Income::whereIn('user_id', $userIds)->find($id);
 
         if (!$income) {
             return response()->json([
@@ -133,12 +147,12 @@ class IncomeController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        // Verify the category belongs to the user if provided
+        // Verify the category belongs to the data owner if provided
         if (isset($validated['category_id'])) {
-            $category = $request->user()->categories()->find($validated['category_id']);
+            $category = $dataOwner->categories()->find($validated['category_id']);
             if (!$category) {
                 return response()->json([
-                    'message' => 'Category not found or does not belong to you.',
+                    'message' => 'Category not found or does not belong to your family.',
                 ], 404);
             }
         }
@@ -157,7 +171,10 @@ class IncomeController extends Controller
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $income = $request->user()->incomes()->find($id);
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
+        $income = Income::whereIn('user_id', $userIds)->find($id);
 
         if (!$income) {
             return response()->json([
@@ -174,16 +191,20 @@ class IncomeController extends Controller
 
     /**
      * Get income summary for current month.
+     * Shows summary for all family members (shared dashboard).
      */
     public function summary(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $userIds = $user->getSharedDashboardUserIds();
+        
         $month = $request->month ?? now()->format('Y-m');
 
-        $total = $request->user()->incomes()
+        $total = Income::whereIn('user_id', $userIds)
             ->month($month)
             ->sum('amount');
 
-        $bySource = $request->user()->incomes()
+        $bySource = Income::whereIn('user_id', $userIds)
             ->month($month)
             ->selectRaw('source, SUM(amount) as total')
             ->groupBy('source')

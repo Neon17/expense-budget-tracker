@@ -4,25 +4,29 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Budget;
+use App\Models\Expense;
+use App\Models\Income;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsService
 {
     /**
      * Get monthly expense/income trend for a year.
+     * Uses shared data for family members.
      */
     public function getMonthlyTrend(User $user, int $year): array
     {
+        $userIds = $user->getSharedDashboardUserIds();
         $months = [];
 
         for ($month = 1; $month <= 12; $month++) {
             $monthStr = sprintf('%d-%02d', $year, $month);
 
-            $expenses = $user->expenses()
+            $expenses = Expense::whereIn('user_id', $userIds)
                 ->month($monthStr)
                 ->sum('amount');
 
-            $income = $user->incomes()
+            $income = Income::whereIn('user_id', $userIds)
                 ->month($monthStr)
                 ->sum('amount');
 
@@ -40,10 +44,13 @@ class AnalyticsService
 
     /**
      * Get expense breakdown by category for a month.
+     * Uses shared data for family members.
      */
     public function getCategoryBreakdown(User $user, string $month): array
     {
-        $expenses = $user->expenses()
+        $userIds = $user->getSharedDashboardUserIds();
+        
+        $expenses = Expense::whereIn('user_id', $userIds)
             ->with('category')
             ->month($month)
             ->selectRaw('category_id, SUM(amount) as total')
@@ -65,19 +72,22 @@ class AnalyticsService
 
     /**
      * Get budget vs actual comparison for a year.
+     * Uses shared data for family members.
      */
     public function getBudgetVsActual(User $user, int $year): array
     {
+        $dataOwner = $user->getDataOwner();
+        $userIds = $user->getSharedDashboardUserIds();
         $data = [];
 
         for ($month = 1; $month <= 12; $month++) {
             $monthStr = sprintf('%d-%02d', $year, $month);
 
-            $budget = $user->budgets()
+            $budget = $dataOwner->budgets()
                 ->where('month', $monthStr)
                 ->first();
 
-            $actual = $user->expenses()
+            $actual = Expense::whereIn('user_id', $userIds)
                 ->month($monthStr)
                 ->sum('amount');
 
@@ -96,19 +106,21 @@ class AnalyticsService
 
     /**
      * Get income vs expense comparison for a year.
+     * Uses shared data for family members.
      */
     public function getIncomeVsExpense(User $user, int $year): array
     {
+        $userIds = $user->getSharedDashboardUserIds();
         $data = [];
 
         for ($month = 1; $month <= 12; $month++) {
             $monthStr = sprintf('%d-%02d', $year, $month);
 
-            $income = $user->incomes()
+            $income = Income::whereIn('user_id', $userIds)
                 ->month($monthStr)
                 ->sum('amount');
 
-            $expense = $user->expenses()
+            $expense = Expense::whereIn('user_id', $userIds)
                 ->month($monthStr)
                 ->sum('amount');
 
@@ -126,38 +138,42 @@ class AnalyticsService
 
     /**
      * Get dashboard summary.
+     * Uses shared data for family members.
      */
     public function getDashboardSummary(User $user): array
     {
+        $userIds = $user->getSharedDashboardUserIds();
+        $dataOwner = $user->getDataOwner();
+        
         $currentMonth = now()->format('Y-m');
         $previousMonth = now()->subMonth()->format('Y-m');
 
         // Current month stats
-        $currentExpenses = $user->expenses()->month($currentMonth)->sum('amount');
-        $currentIncome = $user->incomes()->month($currentMonth)->sum('amount');
+        $currentExpenses = Expense::whereIn('user_id', $userIds)->month($currentMonth)->sum('amount');
+        $currentIncome = Income::whereIn('user_id', $userIds)->month($currentMonth)->sum('amount');
 
         // Previous month stats
-        $previousExpenses = $user->expenses()->month($previousMonth)->sum('amount');
-        $previousIncome = $user->incomes()->month($previousMonth)->sum('amount');
+        $previousExpenses = Expense::whereIn('user_id', $userIds)->month($previousMonth)->sum('amount');
+        $previousIncome = Income::whereIn('user_id', $userIds)->month($previousMonth)->sum('amount');
 
-        // Current budget
-        $budget = $user->budgets()->where('month', $currentMonth)->first();
+        // Current budget (owned by data owner)
+        $budget = $dataOwner->budgets()->where('month', $currentMonth)->first();
 
         // Recent transactions
-        $recentExpenses = $user->expenses()
+        $recentExpenses = Expense::whereIn('user_id', $userIds)
             ->with('category')
             ->orderBy('date', 'desc')
             ->take(5)
             ->get();
 
-        $recentIncomes = $user->incomes()
+        $recentIncomes = Income::whereIn('user_id', $userIds)
             ->with('category')
             ->orderBy('date', 'desc')
             ->take(5)
             ->get();
 
         // Category breakdown for current month
-        $topCategories = $user->expenses()
+        $topCategories = Expense::whereIn('user_id', $userIds)
             ->with('category')
             ->month($currentMonth)
             ->selectRaw('category_id, SUM(amount) as total')
@@ -172,6 +188,22 @@ class AnalyticsService
                 ];
             });
 
+        // Calculate budget stats with shared expenses
+        $budgetData = null;
+        if ($budget) {
+            $spent = (float) $currentExpenses;
+            $remaining = max(0, (float) $budget->monthly_limit - $spent);
+            $usagePercentage = $budget->monthly_limit > 0 ? round(($spent / $budget->monthly_limit) * 100, 2) : 0;
+            
+            $budgetData = [
+                'monthly_limit' => (float) $budget->monthly_limit,
+                'spent' => $spent,
+                'remaining' => $remaining,
+                'usage_percentage' => $usagePercentage,
+                'status' => $this->getBudgetStatusFromPercentage($usagePercentage),
+            ];
+        }
+
         return [
             'current_month' => $currentMonth,
             'summary' => [
@@ -181,13 +213,7 @@ class AnalyticsService
                 'expenses_change' => $this->calculatePercentageChange($previousExpenses, $currentExpenses),
                 'income_change' => $this->calculatePercentageChange($previousIncome, $currentIncome),
             ],
-            'budget' => $budget ? [
-                'monthly_limit' => (float) $budget->monthly_limit,
-                'spent' => (float) $budget->spent,
-                'remaining' => (float) $budget->remaining,
-                'usage_percentage' => $budget->usage_percentage,
-                'status' => $budget->status,
-            ] : null,
+            'budget' => $budgetData,
             'top_categories' => $topCategories,
             'recent_expenses' => $recentExpenses,
             'recent_incomes' => $recentIncomes,
@@ -217,6 +243,14 @@ class AnalyticsService
 
         $percentage = ($actual / $budget->monthly_limit) * 100;
 
+        return $this->getBudgetStatusFromPercentage($percentage);
+    }
+
+    /**
+     * Get budget status from percentage.
+     */
+    protected function getBudgetStatusFromPercentage(float $percentage): string
+    {
         if ($percentage >= 100) {
             return 'exceeded';
         } elseif ($percentage >= 90) {
@@ -230,21 +264,23 @@ class AnalyticsService
 
     /**
      * Get weekly expense/income stats for the specified number of weeks.
+     * Uses shared data for family members.
      */
     public function getWeeklyStats(int $userId, int $weeksBack = 8): array
     {
         $user = User::findOrFail($userId);
+        $userIds = $user->getSharedDashboardUserIds();
         $weeks = [];
 
         for ($i = $weeksBack - 1; $i >= 0; $i--) {
             $weekStart = now()->subWeeks($i)->startOfWeek();
             $weekEnd = now()->subWeeks($i)->endOfWeek();
 
-            $expenses = $user->expenses()
+            $expenses = Expense::whereIn('user_id', $userIds)
                 ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
                 ->sum('amount');
 
-            $income = $user->incomes()
+            $income = Income::whereIn('user_id', $userIds)
                 ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
                 ->sum('amount');
 
@@ -256,9 +292,9 @@ class AnalyticsService
                 'expenses' => (float) $expenses,
                 'income' => (float) $income,
                 'net' => (float) $income - (float) $expenses,
-                'transaction_count' => $user->expenses()
+                'transaction_count' => Expense::whereIn('user_id', $userIds)
                     ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
-                    ->count() + $user->incomes()
+                    ->count() + Income::whereIn('user_id', $userIds)
                     ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
                     ->count(),
             ];
@@ -278,17 +314,20 @@ class AnalyticsService
 
     /**
      * Get category-level statistics.
+     * Uses shared data for family members.
      */
     public function getCategoryStats(int $userId, string $type = 'expense', ?string $startDate = null, ?string $endDate = null): array
     {
         $user = User::findOrFail($userId);
+        $userIds = $user->getSharedDashboardUserIds();
+        
         $startDate = $startDate ?? now()->subMonths(6)->startOfMonth()->toDateString();
         $endDate = $endDate ?? now()->endOfMonth()->toDateString();
 
         if ($type === 'expense') {
-            $query = $user->expenses()->with('category');
+            $query = Expense::whereIn('user_id', $userIds)->with('category');
         } else {
-            $query = $user->incomes()->with('category');
+            $query = Income::whereIn('user_id', $userIds)->with('category');
         }
 
         $data = $query
@@ -333,13 +372,15 @@ class AnalyticsService
 
     /**
      * Get flat expense data for Superset integration.
+     * Uses shared data for family members.
      */
     public function getSupersetExpenseData(int $userId, int $limit = 10000): array
     {
         $user = User::findOrFail($userId);
+        $userIds = $user->getSharedDashboardUserIds();
 
-        return $user->expenses()
-            ->with('category')
+        return Expense::whereIn('user_id', $userIds)
+            ->with(['category', 'user'])
             ->orderBy('date', 'desc')
             ->limit($limit)
             ->get()
@@ -347,7 +388,7 @@ class AnalyticsService
                 return [
                     'id' => $expense->id,
                     'user_id' => $expense->user_id,
-                    'user_name' => $user->name,
+                    'user_name' => $expense->user->name ?? $user->name,
                     'category_id' => $expense->category_id,
                     'category_name' => $expense->category->name ?? 'Uncategorized',
                     'category_color' => $expense->category->color ?? '#6366F1',
@@ -368,13 +409,15 @@ class AnalyticsService
 
     /**
      * Get flat income data for Superset integration.
+     * Uses shared data for family members.
      */
     public function getSupersetIncomeData(int $userId, int $limit = 10000): array
     {
         $user = User::findOrFail($userId);
+        $userIds = $user->getSharedDashboardUserIds();
 
-        return $user->incomes()
-            ->with('category')
+        return Income::whereIn('user_id', $userIds)
+            ->with(['category', 'user'])
             ->orderBy('date', 'desc')
             ->limit($limit)
             ->get()
@@ -382,7 +425,7 @@ class AnalyticsService
                 return [
                     'id' => $income->id,
                     'user_id' => $income->user_id,
-                    'user_name' => $user->name,
+                    'user_name' => $income->user->name ?? $user->name,
                     'category_id' => $income->category_id,
                     'category_name' => $income->category->name ?? 'Uncategorized',
                     'category_color' => $income->category->color ?? '#6366F1',
@@ -405,22 +448,25 @@ class AnalyticsService
 
     /**
      * Get monthly aggregate data for Superset charts.
+     * Uses shared data for family members.
      */
     public function getSupersetMonthlyAggregate(int $userId, int $months = 24): array
     {
         $user = User::findOrFail($userId);
+        $userIds = $user->getSharedDashboardUserIds();
+        $dataOwner = $user->getDataOwner();
         $data = [];
 
         for ($i = $months - 1; $i >= 0; $i--) {
             $monthDate = now()->subMonths($i);
             $monthStr = $monthDate->format('Y-m');
 
-            $expenses = $user->expenses()->month($monthStr)->sum('amount');
-            $income = $user->incomes()->month($monthStr)->sum('amount');
-            $budget = $user->budgets()->where('month', $monthStr)->first();
+            $expenses = Expense::whereIn('user_id', $userIds)->month($monthStr)->sum('amount');
+            $income = Income::whereIn('user_id', $userIds)->month($monthStr)->sum('amount');
+            $budget = $dataOwner->budgets()->where('month', $monthStr)->first();
 
             // Get category breakdown for this month
-            $categoryBreakdown = $user->expenses()
+            $categoryBreakdown = Expense::whereIn('user_id', $userIds)
                 ->with('category')
                 ->month($monthStr)
                 ->selectRaw('category_id, SUM(amount) as total')
@@ -444,8 +490,8 @@ class AnalyticsService
                 'budget_utilization' => $budget && $budget->monthly_limit > 0 
                     ? round(($expenses / $budget->monthly_limit) * 100, 2) 
                     : null,
-                'expense_count' => $user->expenses()->month($monthStr)->count(),
-                'income_count' => $user->incomes()->month($monthStr)->count(),
+                'expense_count' => Expense::whereIn('user_id', $userIds)->month($monthStr)->count(),
+                'income_count' => Income::whereIn('user_id', $userIds)->month($monthStr)->count(),
                 'category_breakdown' => $categoryBreakdown,
                 'currency' => $user->currency ?? 'NPR',
             ];
@@ -464,10 +510,12 @@ class AnalyticsService
 
     /**
      * Get savings rate analysis.
+     * Uses shared data for family members.
      */
     public function getSavingsRate(int $userId, int $months = 12): array
     {
         $user = User::findOrFail($userId);
+        $userIds = $user->getSharedDashboardUserIds();
         $monthlyData = [];
         $totalIncome = 0;
         $totalExpenses = 0;
@@ -476,8 +524,8 @@ class AnalyticsService
             $monthDate = now()->subMonths($i);
             $monthStr = $monthDate->format('Y-m');
 
-            $income = $user->incomes()->month($monthStr)->sum('amount');
-            $expenses = $user->expenses()->month($monthStr)->sum('amount');
+            $income = Income::whereIn('user_id', $userIds)->month($monthStr)->sum('amount');
+            $expenses = Expense::whereIn('user_id', $userIds)->month($monthStr)->sum('amount');
 
             $totalIncome += $income;
             $totalExpenses += $expenses;

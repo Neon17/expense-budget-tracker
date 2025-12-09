@@ -11,10 +11,14 @@ class CategoryController extends Controller
 {
     /**
      * Display a listing of categories.
+     * Categories are owned by the data owner (parent for family).
      */
     public function index(Request $request): JsonResponse
     {
-        $query = $request->user()->categories();
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
+        $query = $dataOwner->categories();
 
         // Filter by type
         if ($request->has('type')) {
@@ -38,9 +42,13 @@ class CategoryController extends Controller
 
     /**
      * Store a newly created category.
+     * Categories are owned by the data owner.
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'color' => ['required', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -48,7 +56,7 @@ class CategoryController extends Controller
             'type' => ['required', 'in:expense,income,both'],
         ]);
 
-        $category = $request->user()->categories()->create($validated);
+        $category = $dataOwner->categories()->create($validated);
 
         return response()->json([
             'message' => 'Category created successfully',
@@ -61,7 +69,10 @@ class CategoryController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $category = $request->user()->categories()
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
+        $category = $dataOwner->categories()
             ->withCount(['expenses', 'incomes'])
             ->find($id);
 
@@ -81,7 +92,10 @@ class CategoryController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $category = $request->user()->categories()->find($id);
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
+        $category = $dataOwner->categories()->find($id);
 
         if (!$category) {
             return response()->json([
@@ -109,7 +123,10 @@ class CategoryController extends Controller
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $category = $request->user()->categories()->find($id);
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
+        $category = $dataOwner->categories()->find($id);
 
         if (!$category) {
             return response()->json([

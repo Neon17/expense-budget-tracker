@@ -51,7 +51,7 @@ class BudgetResource extends Resource
                             ->regex('/^\d{4}-(0[1-9]|1[0-2])$/')
                             ->helperText('Format: YYYY-MM (e.g., 2024-01)'),
                         Hidden::make('user_id')
-                            ->default(fn () => Auth::id()),
+                            ->default(fn () => Auth::user()->getDataOwner()->id),
                         Hidden::make('currency')
                             ->default(fn () => Auth::user()->currency ?? 'NPR'),
                     ])->columns(2),
@@ -129,9 +129,16 @@ class BudgetResource extends Resource
         ];
     }
 
+    /**
+     * Get budgets for the shared family dashboard.
+     * Budgets are owned by the data owner (parent for family).
+     */
     public static function getEloquentQuery(): Builder
     {
+        $user = Auth::user();
+        $dataOwner = $user->getDataOwner();
+        
         return parent::getEloquentQuery()
-            ->where('user_id', Auth::id());
+            ->where('user_id', $dataOwner->id);
     }
 }
