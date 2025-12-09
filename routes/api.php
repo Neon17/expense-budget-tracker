@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\FamilyGroupController;
 use App\Http\Controllers\Api\FamilyUserController;
+use App\Http\Controllers\Api\SupersetDataController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -97,5 +98,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/children/{child}/force', [FamilyUserController::class, 'forceDestroy']);
         Route::post('/children/{child}/reactivate', [FamilyUserController::class, 'reactivate']);
         Route::put('/children/{child}/permissions', [FamilyUserController::class, 'updatePermissions']);
+    });
+
+    // Superset Data Sync API
+    Route::prefix('superset')->group(function () {
+        Route::get('/expenses', [SupersetDataController::class, 'expenseAnalytics']);
+        Route::get('/monthly', [SupersetDataController::class, 'monthlyAggregates']);
+        Route::get('/categories', [SupersetDataController::class, 'categoryBreakdown']);
+        Route::get('/budgets', [SupersetDataController::class, 'budgetVsActual']);
+        Route::get('/daily-trend', [SupersetDataController::class, 'dailyTrend']);
+        Route::get('/family-comparison', [SupersetDataController::class, 'familyComparison']);
+        Route::get('/export', [SupersetDataController::class, 'exportForSuperset']);
     });
 });

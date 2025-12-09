@@ -204,6 +204,17 @@ PUT  /api/family/children/{id}/permissions
 POST /api/family/children/{id}/reactivate
 ```
 
+### Superset Data Sync API
+```http
+GET /api/superset/expenses       # All expense data with analytics fields
+GET /api/superset/monthly        # Monthly aggregated data
+GET /api/superset/categories     # Category breakdown
+GET /api/superset/budgets        # Budget vs actual spending
+GET /api/superset/daily-trend    # Daily trend (last 30 days)
+GET /api/superset/family-comparison  # Family member spending comparison
+GET /api/superset/export         # Export all data for Superset import
+```
+
 ### Analytics
 ```http
 GET /api/analytics/dashboard
@@ -277,16 +288,47 @@ Child users can have any combination of these permissions:
 | `view_categories` | View categories |
 | `manage_categories` | Create/edit categories |
 
-## 🛠️ Tech Stack
+## � Apache Superset Integration
+
+The application supports embedded Apache Superset dashboards for advanced analytics.
+
+### Superset Environment Variables
+```env
+SUPERSET_URL=http://localhost:8088
+SUPERSET_USERNAME=admin
+SUPERSET_PASSWORD=admin
+SUPERSET_EMBED_ENABLED=true
+```
+
+### Connecting Superset to Your MySQL Database
+1. Open Superset at `http://localhost:8088`
+2. Go to **Data > Databases > + Database**
+3. Select **MySQL** and use this connection string:
+   ```
+   mysql://root:mysqli@host.docker.internal:3306/expense-budget-try
+   ```
+   (Replace `host.docker.internal` with `172.17.0.1` on Linux if needed)
+
+4. Create datasets from the `expenses`, `incomes`, `categories`, and `budgets` tables
+5. Build charts and dashboards in Superset
+6. View embedded dashboards in Filament at `/admin/superset-dashboard`
+
+### Starting Superset (Docker)
+```bash
+cd /path/to/superset
+docker compose -f docker-compose-image-tag.yml up -d
+```
+
+## �🛠️ Tech Stack
 
 | Component | Technology |
 |-----------|------------|
 | Backend | Laravel 12, PHP 8.2+ |
 | Admin Panel | Filament 4 |
-| Database | SQLite (dev) / MySQL (prod) |
+| Database | MySQL |
 | API Auth | Laravel Sanctum |
 | Charts | Chart.js |
-| Analytics | Apache Superset (optional) |
+| Analytics | Apache Superset (embedded) |
 | CSS | Tailwind CSS |
 
 ## 📝 Documentation

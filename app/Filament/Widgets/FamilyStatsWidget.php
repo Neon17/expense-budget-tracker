@@ -11,7 +11,7 @@ class FamilyStatsWidget extends BaseWidget
 {
     protected static ?int $sort = 5;
 
-    protected static ?string $pollingInterval = '30s';
+    protected ?string $pollingInterval = '30s';
 
     public static function canView(): bool
     {

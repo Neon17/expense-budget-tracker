@@ -20,7 +20,7 @@ class FamilySettings extends Page implements HasForms
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
 
-    protected static string $view = 'filament.pages.family-settings';
+    protected string $view = 'filament.pages.family-settings';
 
     protected static ?string $navigationLabel = 'Family Settings';
 

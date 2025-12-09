@@ -35,4 +35,21 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Apache Superset Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for connecting to Apache Superset for advanced analytics
+    | and embedded dashboard support.
+    |
+    */
+
+    'superset' => [
+        'url' => env('SUPERSET_URL', 'http://localhost:8088'),
+        'username' => env('SUPERSET_USERNAME', 'admin'),
+        'password' => env('SUPERSET_PASSWORD', 'admin'),
+        'embed_enabled' => env('SUPERSET_EMBED_ENABLED', true),
+    ],
+
 ];
