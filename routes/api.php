@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\FamilyGroupController;
+use App\Http\Controllers\Api\FamilyUserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -81,5 +82,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{familyGroup}/statistics', [FamilyGroupController::class, 'statistics']);
         Route::delete('/{familyGroup}/members/{member}', [FamilyGroupController::class, 'removeMember']);
         Route::put('/{familyGroup}/members/{member}/role', [FamilyGroupController::class, 'updateMemberRole']);
+    });
+
+    // Family Users (Parent-Child Accounts)
+    Route::prefix('family')->group(function () {
+        Route::get('/permissions', [FamilyUserController::class, 'availablePermissions']);
+        Route::put('/update-family', [FamilyUserController::class, 'updateFamily']);
+        Route::get('/statistics', [FamilyUserController::class, 'statistics']);
+        Route::get('/children', [FamilyUserController::class, 'index']);
+        Route::post('/children', [FamilyUserController::class, 'store']);
+        Route::get('/children/{child}', [FamilyUserController::class, 'show']);
+        Route::put('/children/{child}', [FamilyUserController::class, 'update']);
+        Route::delete('/children/{child}', [FamilyUserController::class, 'destroy']);
+        Route::delete('/children/{child}/force', [FamilyUserController::class, 'forceDestroy']);
+        Route::post('/children/{child}/reactivate', [FamilyUserController::class, 'reactivate']);
+        Route::put('/children/{child}/permissions', [FamilyUserController::class, 'updatePermissions']);
     });
 });

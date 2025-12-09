@@ -1,0 +1,1531 @@
+{
+	"info": {
+		"_postman_id": "expense-budget-api-collection",
+		"name": "Expense & Budget Management API",
+		"description": "Complete API collection for the Expense & Budget Management System.\n\n## Setup Instructions\n1. Import this collection into Postman\n2. Set the `base_url` variable to your server URL (default: http://localhost:8000)\n3. Register a user or login to get the auth token\n4. The token will be automatically set for subsequent requests\n\n## Response Format\n**Success:**\n```json\n{\n    \"success\": true,\n    \"message\": \"...\",\n    \"data\": [...]\n}\n```\n\n**Error:**\n```json\n{\n    \"success\": false,\n    \"data\": [],\n    \"errors\": {...},\n    \"message\": \"...\"\n}\n```",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set('auth_token', jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test User\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\",\n    \"currency\": \"NPR\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/register",
+							"host": ["{{base_url}}"],
+							"path": ["register"]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set('auth_token', jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": ["{{base_url}}"],
+							"path": ["login"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/logout",
+							"host": ["{{base_url}}"],
+							"path": ["logout"]
+						}
+					}
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/user",
+							"host": ["{{base_url}}"],
+							"path": ["user"]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Name\",\n    \"currency\": \"USD\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/user/profile",
+							"host": ["{{base_url}}"],
+							"path": ["user", "profile"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Categories",
+			"item": [
+				{
+					"name": "List Categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/categories",
+							"host": ["{{base_url}}"],
+							"path": ["categories"]
+						}
+					}
+				},
+				{
+					"name": "Create Category",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Food & Dining\",\n    \"type\": \"expense\",\n    \"color\": \"#FF5733\",\n    \"icon\": \"shopping-bag\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/categories",
+							"host": ["{{base_url}}"],
+							"path": ["categories"]
+						}
+					}
+				},
+				{
+					"name": "Get Category",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/categories/1",
+							"host": ["{{base_url}}"],
+							"path": ["categories", "1"]
+						}
+					}
+				},
+				{
+					"name": "Update Category",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Category Name\",\n    \"color\": \"#00FF00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/categories/1",
+							"host": ["{{base_url}}"],
+							"path": ["categories", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Category",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/categories/1",
+							"host": ["{{base_url}}"],
+							"path": ["categories", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Expenses",
+			"item": [
+				{
+					"name": "List Expenses",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/expenses?month=2024-12",
+							"host": ["{{base_url}}"],
+							"path": ["expenses"],
+							"query": [
+								{
+									"key": "month",
+									"value": "2024-12"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Expense",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"category_id\": 1,\n    \"amount\": 1500.00,\n    \"date\": \"2024-12-08\",\n    \"description\": \"Lunch at restaurant\",\n    \"note\": \"Team lunch\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/expenses",
+							"host": ["{{base_url}}"],
+							"path": ["expenses"]
+						}
+					}
+				},
+				{
+					"name": "Get Expense",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/expenses/1",
+							"host": ["{{base_url}}"],
+							"path": ["expenses", "1"]
+						}
+					}
+				},
+				{
+					"name": "Update Expense",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 2000.00,\n    \"description\": \"Updated description\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/expenses/1",
+							"host": ["{{base_url}}"],
+							"path": ["expenses", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Expense",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/expenses/1",
+							"host": ["{{base_url}}"],
+							"path": ["expenses", "1"]
+						}
+					}
+				},
+				{
+					"name": "Expenses Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/expenses-summary?month=2024-12",
+							"host": ["{{base_url}}"],
+							"path": ["expenses-summary"],
+							"query": [
+								{
+									"key": "month",
+									"value": "2024-12"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Incomes",
+			"item": [
+				{
+					"name": "List Incomes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/incomes",
+							"host": ["{{base_url}}"],
+							"path": ["incomes"]
+						}
+					}
+				},
+				{
+					"name": "Create Income",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"category_id\": 1,\n    \"amount\": 50000.00,\n    \"date\": \"2024-12-01\",\n    \"source\": \"Monthly Salary\",\n    \"note\": \"December salary\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/incomes",
+							"host": ["{{base_url}}"],
+							"path": ["incomes"]
+						}
+					}
+				},
+				{
+					"name": "Get Income",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/incomes/1",
+							"host": ["{{base_url}}"],
+							"path": ["incomes", "1"]
+						}
+					}
+				},
+				{
+					"name": "Update Income",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 55000.00,\n    \"source\": \"Updated source\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/incomes/1",
+							"host": ["{{base_url}}"],
+							"path": ["incomes", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Income",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/incomes/1",
+							"host": ["{{base_url}}"],
+							"path": ["incomes", "1"]
+						}
+					}
+				},
+				{
+					"name": "Incomes Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/incomes-summary",
+							"host": ["{{base_url}}"],
+							"path": ["incomes-summary"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Budgets",
+			"item": [
+				{
+					"name": "List Budgets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/budgets",
+							"host": ["{{base_url}}"],
+							"path": ["budgets"]
+						}
+					}
+				},
+				{
+					"name": "Create Budget",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"month\": \"2024-12\",\n    \"monthly_limit\": 30000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/budgets",
+							"host": ["{{base_url}}"],
+							"path": ["budgets"]
+						}
+					}
+				},
+				{
+					"name": "Get Current Budget",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/budget/current",
+							"host": ["{{base_url}}"],
+							"path": ["budget", "current"]
+						}
+					}
+				},
+				{
+					"name": "Update Budget",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"monthly_limit\": 35000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/budget",
+							"host": ["{{base_url}}"],
+							"path": ["budget"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Analytics",
+			"item": [
+				{
+					"name": "Dashboard Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "dashboard"]
+						}
+					}
+				},
+				{
+					"name": "Monthly Trend",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/monthly-trend?year=2024",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "monthly-trend"],
+							"query": [
+								{
+									"key": "year",
+									"value": "2024"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Category Breakdown",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/category-breakdown?month=2024-12",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "category-breakdown"],
+							"query": [
+								{
+									"key": "month",
+									"value": "2024-12"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Budget vs Actual",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/budget-vs-actual",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "budget-vs-actual"]
+						}
+					}
+				},
+				{
+					"name": "Income vs Expense",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/income-vs-expense",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "income-vs-expense"]
+						}
+					}
+				},
+				{
+					"name": "Weekly Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/weekly-stats",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "weekly-stats"]
+						}
+					}
+				},
+				{
+					"name": "Category Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/category-stats",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "category-stats"]
+						}
+					}
+				},
+				{
+					"name": "Savings Rate",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/savings-rate",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "savings-rate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Superset Integration",
+			"item": [
+				{
+					"name": "Superset Expenses Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/superset/expenses",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "superset", "expenses"]
+						}
+					}
+				},
+				{
+					"name": "Superset Incomes Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/superset/incomes",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "superset", "incomes"]
+						}
+					}
+				},
+				{
+					"name": "Superset Monthly Aggregate",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/analytics/superset/monthly-aggregate",
+							"host": ["{{base_url}}"],
+							"path": ["analytics", "superset", "monthly-aggregate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Family Groups (Invite Code)",
+			"item": [
+				{
+					"name": "List Family Groups",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family-groups",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups"]
+						}
+					}
+				},
+				{
+					"name": "Create Family Group",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Smith Family\",\n    \"description\": \"Our family budget group\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family-groups",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups"]
+						}
+					}
+				},
+				{
+					"name": "Join Family Group",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"invite_code\": \"ABC12345\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family-groups/join",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "join"]
+						}
+					}
+				},
+				{
+					"name": "Get Family Group",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family-groups/1",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1"]
+						}
+					}
+				},
+				{
+					"name": "Update Family Group",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Family Name\",\n    \"description\": \"Updated description\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family-groups/1",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Family Group",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family-groups/1",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1"]
+						}
+					}
+				},
+				{
+					"name": "Leave Family Group",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family-groups/1/leave",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1", "leave"]
+						}
+					}
+				},
+				{
+					"name": "Regenerate Invite Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family-groups/1/regenerate-code",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1", "regenerate-code"]
+						}
+					}
+				},
+				{
+					"name": "Transfer Ownership",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": 2\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family-groups/1/transfer-ownership",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1", "transfer-ownership"]
+						}
+					}
+				},
+				{
+					"name": "Family Group Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family-groups/1/statistics",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1", "statistics"]
+						}
+					}
+				},
+				{
+					"name": "Remove Member",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family-groups/1/members/2",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1", "members", "2"]
+						}
+					}
+				},
+				{
+					"name": "Update Member Role",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"role\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family-groups/1/members/2/role",
+							"host": ["{{base_url}}"],
+							"path": ["family-groups", "1", "members", "2", "role"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Family Users (Parent-Child)",
+			"item": [
+				{
+					"name": "Get Available Permissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family/permissions",
+							"host": ["{{base_url}}"],
+							"path": ["family", "permissions"]
+						}
+					}
+				},
+				{
+					"name": "Set/Update Family Name",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"family_name\": \"Smith Family\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family/update-family",
+							"host": ["{{base_url}}"],
+							"path": ["family", "update-family"]
+						}
+					}
+				},
+				{
+					"name": "Get Family Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family/statistics",
+							"host": ["{{base_url}}"],
+							"path": ["family", "statistics"]
+						}
+					}
+				},
+				{
+					"name": "List Children",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family/children",
+							"host": ["{{base_url}}"],
+							"path": ["family", "children"]
+						}
+					}
+				},
+				{
+					"name": "Create Child Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Jr\",\n    \"email\": \"jr@example.com\",\n    \"password\": \"password123\",\n    \"permissions\": [\"view_expenses\", \"add_expenses\", \"view_budgets\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family/children",
+							"host": ["{{base_url}}"],
+							"path": ["family", "children"]
+						}
+					}
+				},
+				{
+					"name": "Get Child Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family/children/2",
+							"host": ["{{base_url}}"],
+							"path": ["family", "children", "2"]
+						}
+					}
+				},
+				{
+					"name": "Update Child Account",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Child Name\",\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family/children/2",
+							"host": ["{{base_url}}"],
+							"path": ["family", "children", "2"]
+						}
+					}
+				},
+				{
+					"name": "Update Child Permissions",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"permissions\": [\n        \"view_expenses\",\n        \"add_expenses\",\n        \"view_incomes\",\n        \"view_budgets\",\n        \"view_analytics\"\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/family/children/2/permissions",
+							"host": ["{{base_url}}"],
+							"path": ["family", "children", "2", "permissions"]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Child (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family/children/2",
+							"host": ["{{base_url}}"],
+							"path": ["family", "children", "2"]
+						}
+					}
+				},
+				{
+					"name": "Reactivate Child",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family/children/2/reactivate",
+							"host": ["{{base_url}}"],
+							"path": ["family", "children", "2", "reactivate"]
+						}
+					}
+				},
+				{
+					"name": "Permanently Delete Child",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family/children/2/force",
+							"host": ["{{base_url}}"],
+							"path": ["family", "children", "2", "force"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

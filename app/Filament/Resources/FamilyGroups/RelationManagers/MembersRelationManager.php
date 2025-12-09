@@ -15,6 +15,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Illuminate\Support\Facades\Auth;
 
 class MembersRelationManager extends RelationManager
 {
@@ -28,12 +29,22 @@ class MembersRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn (User $record): ?string => $record->isChild() ? 'Child Account' : null),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('role')
+                    ->label('Account Type')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => ucfirst($state ?? 'member'))
+                    ->color(fn (?string $state): string => match ($state) {
+                        'parent' => 'success',
+                        'child' => 'warning',
+                        default => 'primary',
+                    }),
                 Tables\Columns\TextColumn::make('pivot.role')
-                    ->label('Role')
+                    ->label('Group Role')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'admin' => 'success',
@@ -41,19 +52,39 @@ class MembersRelationManager extends RelationManager
                         'viewer' => 'gray',
                         default => 'gray',
                     }),
+                Tables\Columns\IconColumn::make('is_active')
+                    ->boolean()
+                    ->label('Active')
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle'),
                 Tables\Columns\TextColumn::make('pivot.joined_at')
                     ->label('Joined')
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('role')
+                    ->options([
+                        'parent' => 'Parent Accounts',
+                        'child' => 'Child Accounts',
+                    ])
+                    ->label('Account Type'),
             ])
             ->headerActions([
                 AttachAction::make()
                     ->label('Add Member')
                     ->preloadRecordSelect()
                     ->recordSelectSearchColumns(['name', 'email'])
+                    ->recordSelectOptionsQuery(function () {
+                        $user = Auth::user();
+                        // Allow adding self, children, or other users
+                        return User::query()
+                            ->where(function ($query) use ($user) {
+                                $query->where('id', $user->id)
+                                    ->orWhere('parent_id', $user->id);
+                            })
+                            ->whereNotIn('id', $this->ownerRecord->members->pluck('id'));
+                    })
                     ->form(fn (AttachAction $action): array => [
                         $action->getRecordSelect(),
                         Select::make('role')
@@ -88,6 +119,11 @@ class MembersRelationManager extends RelationManager
                             'role' => $data['role'],
                         ]);
                     }),
+                Action::make('viewExpenses')
+                    ->label('View Expenses')
+                    ->icon('heroicon-o-banknotes')
+                    ->url(fn (User $record): string => route('filament.admin.resources.expenses.index', ['tableFilters[user_id][value]' => $record->id]))
+                    ->openUrlInNewTab(),
                 DetachAction::make()
                     ->label('Remove'),
             ])

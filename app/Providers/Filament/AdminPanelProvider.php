@@ -5,6 +5,8 @@ namespace App\Providers\Filament;
 use App\Filament\Widgets\BudgetProgressWidget;
 use App\Filament\Widgets\CategoryBreakdownWidget;
 use App\Filament\Widgets\ExpenseChartWidget;
+use App\Filament\Widgets\FamilyOverviewWidget;
+use App\Filament\Widgets\FamilyStatsWidget;
 use App\Filament\Widgets\RecentExpensesWidget;
 use App\Filament\Widgets\StatsOverviewWidget;
 use Filament\Http\Middleware\Authenticate;
@@ -53,10 +55,12 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
                 StatsOverviewWidget::class,
+                FamilyStatsWidget::class,
                 ExpenseChartWidget::class,
                 CategoryBreakdownWidget::class,
                 BudgetProgressWidget::class,
                 RecentExpensesWidget::class,
+                FamilyOverviewWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

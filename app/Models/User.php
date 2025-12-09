@@ -5,6 +5,7 @@ namespace App\Models;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -25,6 +26,11 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'currency',
+        'parent_id',
+        'family_name',
+        'role',
+        'permissions',
+        'is_active',
     ];
 
     /**
@@ -47,15 +53,92 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'permissions' => 'array',
+            'is_active' => 'boolean',
         ];
     }
 
     /**
      * Determine if the user can access Filament panel.
+     * Only parent users (not child accounts) can access admin panel.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->is_active && $this->role !== 'child';
+    }
+
+    /**
+     * Get the parent user (for child accounts).
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'parent_id');
+    }
+
+    /**
+     * Get child users (for parent accounts).
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(User::class, 'parent_id');
+    }
+
+    /**
+     * Check if user is a parent account.
+     */
+    public function isParent(): bool
+    {
+        return $this->role === 'parent' || $this->children()->exists();
+    }
+
+    /**
+     * Check if user is a child account.
+     */
+    public function isChild(): bool
+    {
+        return $this->role === 'child' && $this->parent_id !== null;
+    }
+
+    /**
+     * Get the family name (from parent if child).
+     */
+    public function getFamilyDisplayNameAttribute(): ?string
+    {
+        if ($this->family_name) {
+            return $this->family_name;
+        }
+        return $this->parent?->family_name;
+    }
+
+    /**
+     * Check if user has a specific permission.
+     * Scalable: permissions stored as JSON array.
+     */
+    public function hasPermission(string $permission): bool
+    {
+        // Parent users have all permissions
+        if ($this->role === 'parent') {
+            return true;
+        }
+
+        $permissions = $this->permissions ?? [];
+        return in_array($permission, $permissions);
+    }
+
+    /**
+     * Get all family members (including self).
+     */
+    public function getFamilyMembers()
+    {
+        if ($this->isParent()) {
+            return $this->children()->get()->prepend($this);
+        }
+
+        if ($this->isChild() && $this->parent) {
+            return $this->parent->children()->get()->prepend($this->parent);
+        }
+
+        return collect([$this]);
     }
 
     /**
