@@ -87,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Family Users (Parent-Child Accounts)
     Route::prefix('family')->group(function () {
+        Route::get('/overview', [FamilyUserController::class, 'overview']);
         Route::get('/permissions', [FamilyUserController::class, 'availablePermissions']);
         Route::put('/update-family', [FamilyUserController::class, 'updateFamily']);
         Route::get('/statistics', [FamilyUserController::class, 'statistics']);

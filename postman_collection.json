@@ -1263,6 +1263,28 @@
 			"name": "Family Users (Parent-Child)",
 			"item": [
 				{
+					"name": "Get Family Overview",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/family/overview",
+							"host": ["{{base_url}}"],
+							"path": ["family", "overview"]
+						},
+						"description": "Get family overview including parent, siblings (for child users), and children (for parent users). Works for both parent and child accounts."
+					}
+				},
+				{
 					"name": "Get Available Permissions",
 					"request": {
 						"method": "GET",

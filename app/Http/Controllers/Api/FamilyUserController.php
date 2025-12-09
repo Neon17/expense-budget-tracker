@@ -345,4 +345,94 @@ class FamilyUserController extends Controller
             'Child account reactivated successfully'
         );
     }
+
+    /**
+     * Get family overview - works for both parents and children.
+     * Children can see their parent and siblings.
+     * Parents can see their children.
+     */
+    public function overview(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $dataOwner = $user->getDataOwner();
+        
+        $isParent = !$user->isChild();
+        $isChild = $user->isChild();
+        
+        // Get parent info
+        $parent = $isChild ? $user->parent : $user;
+        
+        // Get siblings (other children of the same parent, excluding self)
+        $siblings = $isChild 
+            ? User::where('parent_id', $parent->id)
+                ->where('id', '!=', $user->id)
+                ->get()
+            : collect();
+        
+        // Get all children (for parent view)
+        $children = $isParent ? $user->children()->get() : collect();
+        
+        // Get all family members
+        $familyMembers = $user->getFamilyMembers();
+        
+        // Get the family group if exists
+        $familyGroup = $user->getFamilyGroup() ?? $dataOwner->ownedFamilyGroups()->first();
+        
+        // Calculate stats
+        $totalMembers = $familyMembers->count();
+        $activeMembers = $familyMembers->filter(fn($m) => $m->is_active !== false)->count();
+        $inactiveMembers = $totalMembers - $activeMembers;
+        
+        $response = [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'is_parent' => $isParent,
+                'is_child' => $isChild,
+            ],
+            'family' => [
+                'name' => $parent->family_name ?? $familyGroup?->name ?? 'My Family',
+                'currency' => $dataOwner->currency ?? 'NPR',
+                'total_members' => $totalMembers,
+                'active_members' => $activeMembers,
+                'inactive_members' => $inactiveMembers,
+            ],
+            'parent' => $parent ? [
+                'id' => $parent->id,
+                'name' => $parent->name,
+                'email' => $parent->email,
+                'currency' => $parent->currency ?? 'NPR',
+                'is_active' => $parent->is_active !== false,
+                'created_at' => $parent->created_at,
+            ] : null,
+            'siblings' => $siblings->map(fn($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'email' => $s->email,
+                'is_active' => $s->is_active !== false,
+                'created_at' => $s->created_at,
+            ])->values(),
+            'children' => $children->map(fn($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'email' => $c->email,
+                'is_active' => $c->is_active !== false,
+                'permissions' => $c->permissions ?? [],
+                'created_at' => $c->created_at,
+            ])->values(),
+            'family_group' => $familyGroup ? [
+                'id' => $familyGroup->id,
+                'name' => $familyGroup->name,
+                'description' => $familyGroup->description,
+                'invite_code' => $isParent ? $familyGroup->invite_code : null, // Only show invite code to parents
+                'shared_budget' => $familyGroup->shared_budget,
+                'is_active' => $familyGroup->is_active,
+                'created_at' => $familyGroup->created_at,
+            ] : null,
+        ];
+
+        return $this->successResponse($response, 'Family overview retrieved successfully');
+    }
 }
