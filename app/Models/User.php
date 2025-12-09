@@ -60,11 +60,12 @@ class User extends Authenticatable implements FilamentUser
 
     /**
      * Determine if the user can access Filament panel.
-     * Only parent users (not child accounts) can access admin panel.
+     * Both parent and child users can access the admin panel.
+     * Child users will see the shared family dashboard.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->is_active && $this->role !== 'child';
+        return $this->is_active !== false;
     }
 
     /**

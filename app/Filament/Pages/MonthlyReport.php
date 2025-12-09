@@ -63,18 +63,20 @@ class MonthlyReport extends Page implements HasForms
     public function getReportData(): array
     {
         $user = Auth::user();
+        $userIds = $user->getSharedDashboardUserIds();
+        $dataOwner = $user->getDataOwner();
         $month = $this->selectedMonth ?? now()->format('Y-m');
 
-        $expenses = Expense::where('user_id', $user->id)
+        $expenses = Expense::whereIn('user_id', $userIds)
             ->month($month)
             ->get();
 
-        $incomes = Income::where('user_id', $user->id)
+        $incomes = Income::whereIn('user_id', $userIds)
             ->month($month)
             ->get();
 
-        // Get all budgets for the user (for the selected month)
-        $budgets = Budget::where('user_id', $user->id)
+        // Get budget for the data owner (for the selected month)
+        $budgets = Budget::where('user_id', $dataOwner->id)
             ->where('month', $month)
             ->get();
 

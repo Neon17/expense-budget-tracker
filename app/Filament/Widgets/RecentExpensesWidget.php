@@ -18,10 +18,14 @@ class RecentExpensesWidget extends BaseWidget
 
     public function table(Table $table): Table
     {
+        $user = Auth::user();
+        $userIds = $user->getSharedDashboardUserIds();
+        $currency = $user->getDataOwner()->currency ?? 'NPR';
+        
         return $table
             ->query(
                 Expense::query()
-                    ->where('user_id', Auth::id())
+                    ->whereIn('user_id', $userIds)
                     ->with('category')
                     ->orderBy('date', 'desc')
                     ->limit(5)
@@ -32,7 +36,7 @@ class RecentExpensesWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('category.name')
                     ->label('Category'),
                 Tables\Columns\TextColumn::make('amount')
-                    ->money('NPR')
+                    ->money($currency)
                     ->color('danger'),
                 Tables\Columns\TextColumn::make('date')
                     ->date(),

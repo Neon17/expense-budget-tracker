@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Expense;
+use App\Models\Income;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,6 +16,7 @@ class ExpenseChartWidget extends ChartWidget
     protected function getData(): array
     {
         $user = Auth::user();
+        $userIds = $user->getSharedDashboardUserIds();
         $expenses = [];
         $incomes = [];
         $labels = [];
@@ -23,8 +26,8 @@ class ExpenseChartWidget extends ChartWidget
             $monthStr = $month->format('Y-m');
             $labels[] = $month->format('M Y');
 
-            $expenses[] = (float) $user->expenses()->month($monthStr)->sum('amount');
-            $incomes[] = (float) $user->incomes()->month($monthStr)->sum('amount');
+            $expenses[] = (float) Expense::whereIn('user_id', $userIds)->month($monthStr)->sum('amount');
+            $incomes[] = (float) Income::whereIn('user_id', $userIds)->month($monthStr)->sum('amount');
         }
 
         return [

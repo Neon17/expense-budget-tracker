@@ -2,6 +2,9 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Budget;
+use App\Models\Expense;
+use App\Models\Income;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
@@ -13,17 +16,27 @@ class StatsOverviewWidget extends BaseWidget
     protected function getStats(): array
     {
         $user = Auth::user();
+        $userIds = $user->getSharedDashboardUserIds();
+        $dataOwner = $user->getDataOwner();
         $currentMonth = now()->format('Y-m');
         $previousMonth = now()->subMonth()->format('Y-m');
 
-        // Current month expenses
-        $currentExpenses = $user->expenses()->month($currentMonth)->sum('amount');
-        $previousExpenses = $user->expenses()->month($previousMonth)->sum('amount');
+        // Current month expenses (shared family data)
+        $currentExpenses = Expense::whereIn('user_id', $userIds)
+            ->month($currentMonth)
+            ->sum('amount');
+        $previousExpenses = Expense::whereIn('user_id', $userIds)
+            ->month($previousMonth)
+            ->sum('amount');
         $expenseChange = $this->calculateChange($previousExpenses, $currentExpenses);
 
-        // Current month income
-        $currentIncome = $user->incomes()->month($currentMonth)->sum('amount');
-        $previousIncome = $user->incomes()->month($previousMonth)->sum('amount');
+        // Current month income (shared family data)
+        $currentIncome = Income::whereIn('user_id', $userIds)
+            ->month($currentMonth)
+            ->sum('amount');
+        $previousIncome = Income::whereIn('user_id', $userIds)
+            ->month($previousMonth)
+            ->sum('amount');
         $incomeChange = $this->calculateChange($previousIncome, $currentIncome);
 
         // Savings
@@ -31,29 +44,33 @@ class StatsOverviewWidget extends BaseWidget
         $previousSavings = $previousIncome - $previousExpenses;
         $savingsChange = $this->calculateChange($previousSavings, $savings);
 
-        // Budget
-        $budget = $user->budgets()->where('month', $currentMonth)->first();
+        // Budget (data owner's budget)
+        $budget = Budget::where('user_id', $dataOwner->id)
+            ->where('month', $currentMonth)
+            ->first();
+
+        $currency = $dataOwner->currency ?? 'NPR';
 
         return [
-            Stat::make('Monthly Expenses', 'NPR ' . number_format($currentExpenses, 2))
+            Stat::make('Monthly Expenses', $currency . ' ' . number_format($currentExpenses, 2))
                 ->description($expenseChange >= 0 ? "+{$expenseChange}% from last month" : "{$expenseChange}% from last month")
                 ->descriptionIcon($expenseChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($expenseChange >= 0 ? 'danger' : 'success')
                 ->chart($this->getExpenseChartData()),
 
-            Stat::make('Monthly Income', 'NPR ' . number_format($currentIncome, 2))
+            Stat::make('Monthly Income', $currency . ' ' . number_format($currentIncome, 2))
                 ->description($incomeChange >= 0 ? "+{$incomeChange}% from last month" : "{$incomeChange}% from last month")
                 ->descriptionIcon($incomeChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($incomeChange >= 0 ? 'success' : 'danger')
                 ->chart($this->getIncomeChartData()),
 
-            Stat::make('Monthly Savings', 'NPR ' . number_format($savings, 2))
+            Stat::make('Monthly Savings', $currency . ' ' . number_format($savings, 2))
                 ->description($savingsChange >= 0 ? "+{$savingsChange}% from last month" : "{$savingsChange}% from last month")
                 ->descriptionIcon($savingsChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($savings >= 0 ? 'success' : 'danger'),
 
             Stat::make('Budget Status', $budget ? number_format($budget->usage_percentage, 1) . '%' : 'Not Set')
-                ->description($budget ? "NPR {$budget->remaining} remaining" : 'Set your monthly budget')
+                ->description($budget ? "{$currency} {$budget->remaining} remaining" : 'Set your monthly budget')
                 ->descriptionIcon('heroicon-m-calculator')
                 ->color($this->getBudgetColor($budget)),
         ];
@@ -81,11 +98,12 @@ class StatsOverviewWidget extends BaseWidget
     protected function getExpenseChartData(): array
     {
         $user = Auth::user();
+        $userIds = $user->getSharedDashboardUserIds();
         $data = [];
 
         for ($i = 6; $i >= 0; $i--) {
             $month = now()->subMonths($i)->format('Y-m');
-            $data[] = (float) $user->expenses()->month($month)->sum('amount');
+            $data[] = (float) Expense::whereIn('user_id', $userIds)->month($month)->sum('amount');
         }
 
         return $data;
@@ -94,11 +112,12 @@ class StatsOverviewWidget extends BaseWidget
     protected function getIncomeChartData(): array
     {
         $user = Auth::user();
+        $userIds = $user->getSharedDashboardUserIds();
         $data = [];
 
         for ($i = 6; $i >= 0; $i--) {
             $month = now()->subMonths($i)->format('Y-m');
-            $data[] = (float) $user->incomes()->month($month)->sum('amount');
+            $data[] = (float) Income::whereIn('user_id', $userIds)->month($month)->sum('amount');
         }
 
         return $data;
