@@ -420,25 +420,21 @@ class FamilyGroupController extends Controller
         // Get all member IDs including owner
         $memberIds = $familyGroup->members()->pluck('users.id')->push($familyGroup->owner_id)->unique();
 
-        $totalExpenses = DB::table('expenses')
-            ->whereIn('user_id', $memberIds)
-            ->whereRaw("strftime('%Y-%m', date) = ?", [$currentMonth])
+        $totalExpenses = \App\Models\Expense::whereIn('user_id', $memberIds)
+            ->month($currentMonth)
             ->sum('amount');
 
-        $totalIncome = DB::table('incomes')
-            ->whereIn('user_id', $memberIds)
-            ->whereRaw("strftime('%Y-%m', date) = ?", [$currentMonth])
+        $totalIncome = \App\Models\Income::whereIn('user_id', $memberIds)
+            ->month($currentMonth)
             ->sum('amount');
 
         $memberStats = $memberIds->map(function ($memberId) use ($currentMonth) {
             $user = User::find($memberId);
-            $expenses = DB::table('expenses')
-                ->where('user_id', $memberId)
-                ->whereRaw("strftime('%Y-%m', date) = ?", [$currentMonth])
+            $expenses = \App\Models\Expense::where('user_id', $memberId)
+                ->month($currentMonth)
                 ->sum('amount');
-            $income = DB::table('incomes')
-                ->where('user_id', $memberId)
-                ->whereRaw("strftime('%Y-%m', date) = ?", [$currentMonth])
+            $income = \App\Models\Income::where('user_id', $memberId)
+                ->month($currentMonth)
                 ->sum('amount');
 
             return [

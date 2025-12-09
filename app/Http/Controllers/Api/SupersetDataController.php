@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\FamilyGroup;
+use App\Helpers\DatabaseHelper;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -44,12 +45,12 @@ class SupersetDataController extends Controller
                 'user_id',
                 'category_id',
                 'amount',
-                'description',
-                'expense_date',
+                'note as description',
+                'date',
                 'created_at',
             ])
             ->with(['category:id,name,color', 'user:id,name,email'])
-            ->orderBy('expense_date', 'desc')
+            ->orderBy('date', 'desc')
             ->get()
             ->map(function ($expense) {
                 return [
@@ -61,13 +62,13 @@ class SupersetDataController extends Controller
                     'category_color' => $expense->category?->color,
                     'amount' => (float) $expense->amount,
                     'description' => $expense->description,
-                    'expense_date' => $expense->expense_date->format('Y-m-d'),
-                    'year' => $expense->expense_date->year,
-                    'month' => $expense->expense_date->month,
-                    'month_name' => $expense->expense_date->format('F'),
-                    'day' => $expense->expense_date->day,
-                    'day_of_week' => $expense->expense_date->format('l'),
-                    'week_of_year' => $expense->expense_date->weekOfYear,
+                    'expense_date' => $expense->date->format('Y-m-d'),
+                    'year' => $expense->date->year,
+                    'month' => $expense->date->month,
+                    'month_name' => $expense->date->format('F'),
+                    'day' => $expense->date->day,
+                    'day_of_week' => $expense->date->format('l'),
+                    'week_of_year' => $expense->date->weekOfYear,
                     'created_at' => $expense->created_at->toIso8601String(),
                 ];
             });
@@ -103,17 +104,20 @@ class SupersetDataController extends Controller
             $query->where('user_id', $user->id);
         }
         
+        $yearExpr = DatabaseHelper::yearExpression('date');
+        $monthExpr = DatabaseHelper::monthExpression('date');
+        
         $monthlyData = $query
             ->select([
-                DB::raw('YEAR(expense_date) as year'),
-                DB::raw('MONTH(expense_date) as month'),
+                DB::raw("{$yearExpr} as year"),
+                DB::raw("{$monthExpr} as month"),
                 DB::raw('SUM(amount) as total_amount'),
                 DB::raw('COUNT(*) as transaction_count'),
                 DB::raw('AVG(amount) as avg_amount'),
                 DB::raw('MAX(amount) as max_amount'),
                 DB::raw('MIN(amount) as min_amount'),
             ])
-            ->groupBy(DB::raw('YEAR(expense_date)'), DB::raw('MONTH(expense_date)'))
+            ->groupBy(DB::raw($yearExpr), DB::raw($monthExpr))
             ->orderBy('year', 'desc')
             ->orderBy('month', 'desc')
             ->get()
@@ -296,14 +300,16 @@ class SupersetDataController extends Controller
         
         $startDate = now()->subDays($days);
         
+        $dateExpr = DatabaseHelper::dateExpression('date');
+        
         $dailyData = $query
-            ->where('expense_date', '>=', $startDate)
+            ->where('date', '>=', $startDate)
             ->select([
-                DB::raw('DATE(expense_date) as date'),
+                DB::raw("{$dateExpr} as date"),
                 DB::raw('SUM(amount) as total_amount'),
                 DB::raw('COUNT(*) as transaction_count'),
             ])
-            ->groupBy(DB::raw('DATE(expense_date)'))
+            ->groupBy(DB::raw($dateExpr))
             ->orderBy('date')
             ->get()
             ->map(function ($item) {

@@ -243,10 +243,10 @@ class FamilyUserController extends Controller
             'total_members' => $familyMembers->count(),
             'active_members' => $familyMembers->where('is_active', true)->count(),
             'total_expenses_this_month' => \App\Models\Expense::whereIn('user_id', $familyMemberIds)
-                ->whereRaw("strftime('%Y-%m', date) = ?", [$currentMonth])
+                ->month($currentMonth)
                 ->sum('amount'),
             'total_income_this_month' => \App\Models\Income::whereIn('user_id', $familyMemberIds)
-                ->whereRaw("strftime('%Y-%m', date) = ?", [$currentMonth])
+                ->month($currentMonth)
                 ->sum('amount'),
             'members_breakdown' => $familyMembers->map(function ($member) use ($currentMonth) {
                 return [
@@ -254,10 +254,10 @@ class FamilyUserController extends Controller
                     'name' => $member->name,
                     'role' => $member->role,
                     'expenses_this_month' => $member->expenses()
-                        ->whereRaw("strftime('%Y-%m', date) = ?", [$currentMonth])
+                        ->month($currentMonth)
                         ->sum('amount'),
                     'income_this_month' => $member->incomes()
-                        ->whereRaw("strftime('%Y-%m', date) = ?", [$currentMonth])
+                        ->month($currentMonth)
                         ->sum('amount'),
                 ];
             }),
